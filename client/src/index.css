@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes bgcolor {
+  0% {
+    background-color: #ff586e;
+  }
+
+  20% {
+    background-color: #cb49ff;
+  }
+
+  40% {
+    background-color: #9f56ff;
+  }
+
+  60% {
+    background-color: rgb(66, 101, 255);
+  }
+
+  80% {
+    background-color: #69e1ff;
+  }
+  100% {
+    background-color: #53ffc6;
+  }
+}
+
+body {
+  -webkit-animation: bgcolor 10s infinite;
+  animation: bgcolor 10s infinite;
+  -webkit-animation-direction: alternate;
+  animation-direction: alternate;
+}
