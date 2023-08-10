@@ -1,14 +1,22 @@
 import "bootstrap/dist/css/bootstrap.min.css";
 import React from "react";
 import "./App.css";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Create } from "./pages/create";
 import { NavBar } from "./components/navBar";
+import { Group } from "./pages/group";
 
 function App() {
   return (
     <>
-      <NavBar></NavBar>
-      <Create></Create>
+      <NavBar />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Create />} />
+          <Route path="/group" element={<Group />} />
+          {/* <Route path="*" element={<Error />} /> */}
+        </Routes>
+      </BrowserRouter>
     </>
   );
 }

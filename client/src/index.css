@@ -27,7 +27,7 @@
   }
 }
 
-body {
+.create-page {
   -webkit-animation: bgcolor 10s infinite;
   animation: bgcolor 10s infinite;
   -webkit-animation-direction: alternate;
