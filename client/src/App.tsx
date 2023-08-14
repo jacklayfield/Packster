@@ -4,7 +4,7 @@ import "./App.css";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Create } from "./pages/create";
 import { NavBar } from "./components/navBar";
-import { Group } from "./pages/group";
+import { Group } from "./pages/group/group";
 
 function App() {
   return (
