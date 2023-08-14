@@ -1,3 +1,9 @@
+import { CollapsibleDisplay } from "./../components/collapsibleDisplay";
+
 export const Report = () => {
-  return <div></div>;
+  return (
+    <div>
+      <CollapsibleDisplay contents={["blah"]} />
+    </div>
+  );
 };
