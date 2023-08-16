@@ -6,6 +6,7 @@ import { Create } from "./pages/create";
 import { NavBar } from "./components/navBar";
 import { Group } from "./pages/group/group";
 import { Report } from "./pages/report";
+import { Test } from "./pages/test";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="/" element={<Create />} />
           <Route path="/group" element={<Group />} />
           <Route path="/report" element={<Report />} />
+          <Route path="/test" element={<Test />} />
           {/* <Route path="*" element={<Error />} /> */}
         </Routes>
       </BrowserRouter>

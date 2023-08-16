@@ -1,6 +1,6 @@
 import { syncedStore, getYjsDoc } from "@syncedstore/core";
 import { WebrtcProvider } from "y-webrtc";
-import { WebsocketProvider } from "y-websocket";
+import { IndexeddbPersistence } from "y-indexeddb";
 
 // (optional, define types for TypeScript)
 type Todo = { completed: boolean; title: string };
@@ -9,14 +9,10 @@ type Todo = { completed: boolean; title: string };
 export const store = syncedStore({ todos: [] as Todo[], fragment: "xml" });
 
 // Create a document that syncs automatically using Y-WebRTC
-
 const doc = getYjsDoc(store);
-//export const webrtcProvider = new WebrtcProvider("syncedstore-todos", doc);
-export const wsProvider = new WebsocketProvider(
-  "ws://localhost:1234",
-  "syncedstore-todos",
-  doc
-);
+export const webrtcProvider = new WebrtcProvider("syncedstore-todos", doc);
 
-// export const disconnect = () => WebsocketProvider.disconnect();
-// export const connect = () => WebsocketProvider.connect();
+export const disconnect = () => webrtcProvider.disconnect();
+export const connect = () => webrtcProvider.connect();
+
+export const indexeddbProvider = new IndexeddbPersistence("y-indexeddb", doc);

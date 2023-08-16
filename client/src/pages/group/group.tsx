@@ -1,20 +1,19 @@
 import React from "react";
 import { useSyncedStore } from "@syncedstore/react";
 import { store } from "../../store/store";
-import "./groupstyle.css"
+import "./groupstyle.css";
 import { wsProvider } from "../../store/store";
+import { indexeddbProvider } from "../../store/store_test";
 
 export const Group = () => {
-
-  wsProvider.on('status', (event: { status: any; }) => {
-    console.log(event.status) // logs "connected" or "disconnected"
-  })
+  wsProvider.on("status", (event: { status: any }) => {
+    console.log(event.status); // logs "connected" or "disconnected"
+  });
   const state = useSyncedStore(store);
   return (
     <>
-    <header>
-        
-    </header><div className="div-1">
+      <header></header>
+      <div className="div-1">
         <p>Todo items:</p>
 
         <ul>
@@ -28,7 +27,8 @@ export const Group = () => {
                   <input
                     type="checkbox"
                     checked={todo.completed}
-                    onClick={() => (todo.completed = !todo.completed)} />
+                    onClick={() => (todo.completed = !todo.completed)}
+                  />
                   {todo.title}
                 </label>
               </li>
@@ -45,9 +45,10 @@ export const Group = () => {
               state.todos.push({ completed: false, title: target.value });
               target.value = "";
             }
-          } }
-          style={{ width: "200px", maxWidth: "100%" }} />
+          }}
+          style={{ width: "200px", maxWidth: "100%" }}
+        />
       </div>
-      </>
+    </>
   );
 };
