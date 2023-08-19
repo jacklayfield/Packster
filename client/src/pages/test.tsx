@@ -1,65 +1,60 @@
-import { useState, useRef } from "react";
-import Editor from "@monaco-editor/react";
-import * as Y from "yjs";
+import { useEffect, useState } from "react";
+import { IndexeddbPersistence } from "y-indexeddb";
+import * as awarenessProtocol from "y-protocols/awareness.js";
 import { WebrtcProvider } from "y-webrtc";
-import { MonacoBinding } from "y-monaco";
+import * as Y from "yjs";
+import { YjsTextArea } from "../components/yjsTextArea";
+
+const room = "shashankJack";
+
+const usercolors = [
+  "#30bced",
+  "#6eeb83",
+  "#ffbc42",
+  "#ecd444",
+  "#ee6352",
+  "#9ac2c9",
+  "#8acb88",
+  "#1be7ff",
+];
+const myColor = usercolors[Math.floor(Math.random() * usercolors.length)];
 
 export const Test = () => {
-  const editorRef = useRef(null);
-  const [textInput, setTextInput] = useState("");
-  // Editor value -> YJS Text Value (A text value shared by multiple people)
-  // One person deletes text -> Deletes from overall shared text value
-  // Handled by yjs
-  const ydoc = new Y.Doc();
-  // Initialize yjs, tell it to listen to our monaco instance for changes
-  const ytext = ydoc.getText("my text type");
-  // Method 2: Define Y.Text that can be included into the Yjs document
-  const ytextNested = new Y.Text();
-  // Nested types can be included as content into any other shared type
-  ydoc.getMap("another shared structure").set("my nested text", ytextNested);
-  // function handleEditorDidMount(editor: any, monaco: any) {
-  //   editorRef.current = editor;
-  //   // initialize yjs
+  const [yText, setYText] = useState<Y.Text>();
+  // const [xText, setXText] = useState<Y.Text>();
+  const [awareness, setAwareness] = useState<awarenessProtocol.Awareness>();
 
-  //   // connects to peers (or start connecton) with WebRTC
-  //   const provider = new WebrtcProvider("test-room", ydoc);
-  //   const type = ydoc.getText("monaco"); // ydoc { " monaco ": "whaat is in our IDE"}
-  //   const binding = new MonacoBinding(
-  //     type,
-  //     editorRef.current.getModel(),
-  //     new Set([editorRef.current]),
-  //     provider.awareness
-  //   );
-  // }
+  useEffect(() => {
+    const yDoc = new Y.Doc();
+    const persistence = new IndexeddbPersistence(room, yDoc);
+    const wrtcProvider = new WebrtcProvider(room, yDoc);
 
-  // function onKeyPress(event) {
-  //   event.preventDefault();
-  //   if (event.key === "Enter") {
-  //     const target = event.target.value;
-  //     ytext.insert(target);
-  //   }
-  //   console.log(ytext);
-  // }
+    wrtcProvider.awareness.setLocalStateField("user", {
+      color: myColor,
+    });
+
+    persistence.once("synced", () => {
+      console.log("synced");
+      const yText = yDoc.getText("text");
+      // const xText = yDoc.getText("text1");
+      setYText(yText);
+      // setXText(xText);
+      setAwareness(wrtcProvider.awareness);
+    });
+
+    return () => {
+      yDoc.destroy();
+      persistence.destroy();
+      wrtcProvider.destroy();
+      setYText(undefined);
+      setAwareness(undefined);
+    };
+  }, []);
 
   return (
-    <>
-      <Editor
-        height="50vh"
-        width="50vw"
-        theme="vs-dark"
-        //onMount={handleEditorDidMount}
-      />
-      <div>
-        <form>
-          <label>Enter</label>
-          <input
-            type="text"
-            placeholder="enter ur nuts here"
-            // onKeyPress={onKeyPress}
-          ></input>
-          <div>{textInput}</div>
-        </form>
-      </div>
-    </>
+    <div>
+      <YjsTextArea yText={yText} awareness={awareness} />
+      {/* <YjsTextArea yText={xText} awareness={awareness} /> */}
+    </div>
   );
 };
