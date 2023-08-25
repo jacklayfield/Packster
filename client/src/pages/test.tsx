@@ -21,7 +21,7 @@ const myColor = usercolors[Math.floor(Math.random() * usercolors.length)];
 
 export const Test = () => {
   const [yText, setYText] = useState<Y.Text>();
-  // const [xText, setXText] = useState<Y.Text>();
+  const [xText, setXText] = useState<Y.Text>();
   const [awareness, setAwareness] = useState<awarenessProtocol.Awareness>();
 
   useEffect(() => {
@@ -36,9 +36,9 @@ export const Test = () => {
     persistence.once("synced", () => {
       console.log("synced");
       const yText = yDoc.getText("text");
-      // const xText = yDoc.getText("text1");
+      const xText = yDoc.getText("text1");
       setYText(yText);
-      // setXText(xText);
+      setXText(xText);
       setAwareness(wrtcProvider.awareness);
     });
 
@@ -51,10 +51,14 @@ export const Test = () => {
     };
   }, []);
 
-  return (
-    <div>
-      <YjsTextArea yText={yText} awareness={awareness} />
-      {/* <YjsTextArea yText={xText} awareness={awareness} /> */}
-    </div>
-  );
+  if (xText) {
+    return <>{xText.toString()}</>;
+  } else {
+    return (
+      <div>
+        {/* <YjsTextArea yText={yText} awareness={awareness} />
+        <YjsTextArea yText={xText} awareness={awareness} /> */}
+      </div>
+    );
+  }
 };
