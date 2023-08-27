@@ -1,11 +1,12 @@
 import Col from "react-bootstrap/esm/Col";
 import Row from "react-bootstrap/esm/Row";
 import { ListItem } from "../../components/listItem";
+import { ListHeader } from "../../components/listHeader";
 
 export const Group = () => {
   return (
     <div className="flex flex-col justify-center items-center pt-24 ">
-      <div className="text-7xl pb-6">Example</div>
+      <ListHeader />
 
       <div className="w-75 rounded-2xl px-6 py-6 text-center">
         <Row>
