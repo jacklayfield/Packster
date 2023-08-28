@@ -1,10 +1,11 @@
 import Col from "react-bootstrap/esm/Col";
 import Row from "react-bootstrap/esm/Row";
+import ProgressBar from "./progressBar";
 
 export const ListHeader = () => {
   return (
     <div className="w-75 mt-3 ">
-      <Row>
+      <Row className="flex items-center">
         <Col>
           <div className="bg-blue-200 rounded-md px-6 py-6 text-center text-3xl font-bold mt-30">
             11/20/2023
@@ -17,9 +18,7 @@ export const ListHeader = () => {
           </div>{" "}
         </Col>
         <Col>
-          <div className="bg-green-200 rounded-md px-6 py-6 text-center text-3xl font-bold mt-30">
-            $100/$250
-          </div>
+          <ProgressBar bgcolor={"#BBF7D0"} completed={0} total={150} />
         </Col>
       </Row>
     </div>
