@@ -1,0 +1,10 @@
+[
+    {
+        "name": "Sample Item",
+        "require": true,
+        "available": 1,
+        "cost": 10,
+        "who": ["Shashank ", "jack"]
+    }
+   
+]

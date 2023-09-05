@@ -1,22 +1,28 @@
+import React from "react";
 import Col from "react-bootstrap/esm/Col";
 import Row from "react-bootstrap/esm/Row";
 
-export const ListItem = () => {
-  const ex = "Jack, Shashank";
+interface props {
+  name: string;
+  required: boolean;
+  available: number;
+  cost: number;
+  assignees: string[];
+}
+export const ListItem= ( props: { name: string; required: boolean; available: number, cost: number; assignees: string[]; } ):JSX.Element => {
   return (
-    <div className="w-75 bg-violet-300 rounded-2xl px-6 py-6 text-center font-bold mt-3">
-      <Row>
-        <Col>Tent </Col>
-        <Col>3</Col>
-        <Col>1</Col>
-        <Col>N/A</Col>
+    
+        <Row>
+        <Col> {props.name} </Col>
+        <Col>{JSON.stringify(props.required)}</Col>
+        <Col>{props.available}</Col>
+        <Col>{props.cost}</Col>
         <Col>
-          {ex}
+          {props.assignees}
           <button className="bg-gray-900 hover:bg-gray-800 text-white text-sm font-bold py-1 px-2 ml-2 rounded">
             Claim!
           </button>
         </Col>
       </Row>
-    </div>
   );
 };
