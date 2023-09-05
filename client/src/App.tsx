@@ -4,7 +4,7 @@ import "./App.css";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Create } from "./pages/create";
 import { NavBar } from "./components/navBar";
-import { Group } from "./pages/group/group";
+import { Group } from "./pages/group";
 import { Report } from "./pages/report";
 import { Test } from "./pages/test";
 

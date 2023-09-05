@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/** Any CSS that is difficult, ugly, or impossible to acheive with Tailwind
+If this grows to large we will migrate to a structure that includes organized
+style files **/
+
 @keyframes bgcolor {
   0% {
     background-color: #ff586e;
