@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+// TODO: Replace server with websocket approach
+
 /**
  * @type {any}
  */
