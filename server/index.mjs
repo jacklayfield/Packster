@@ -2,11 +2,11 @@ import express from "express";
 import cors from "cors";
 import "./loadEnv.mjs";
 import "express-async-errors";
-import test from "./routes/test.mjs";
+import "./db/conn.mjs";
+import group from "./routes/group.mjs";
+import item from "./routes/item.mjs";
 import http from "http";
 import { Server } from "socket.io";
-
-console.log("MONGOURL", process.env.MONGO_URL);
 
 const PORT = process.env.PORT || 7000;
 const app = express();
@@ -14,8 +14,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Load the /test routes
-app.use("/test", test);
+// Load routes
+app.use("/group", group);
+app.use("/item", item);
 
 // Global error handling
 app.use((err, _req, res, next) => {
