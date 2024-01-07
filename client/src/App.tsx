@@ -15,7 +15,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Create />} />
-          <Route path="/group" element={<Group />} />
+          <Route path="/group/:groupid" element={<Group />} />
           <Route path="/report" element={<Report />} />
           <Route path="/test" element={<Test />} />
           {/* <Route path="*" element={<Error />} /> */}
