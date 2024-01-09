@@ -3,6 +3,24 @@ import mountains from "../images/mountains4.png";
 import axios from "axios";
 import { useState } from "react";
 import { group } from "console";
+import { useNavigate } from "react-router-dom";
+
+const motd = [
+  "What's the plan?",
+  "Camping?",
+  "Where to?",
+  "What we doin?",
+  "Beach?",
+  "How about Caving?",
+  "Mountains or Palm Trees?",
+  "Skiing?",
+  "Right Here ↓",
+  "Cool event below ↓",
+];
+
+const selected_motd = motd[Math.floor(Math.random() * motd.length)];
+
+export const BASE_URL_API = "http://localhost:7000";
 
 export const Create = () => {
   const [groupDetails, setGroupDetails] = useState({
@@ -12,9 +30,20 @@ export const Create = () => {
   });
 
   const numRegex = /^[0-9\b]+$/;
+  const navigate = useNavigate();
 
   const handleCreateGroup = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    axios
+      .post(BASE_URL_API + "/group/create", { data: groupDetails })
+      .catch((error) => {
+        console.log(error);
+      })
+      .then(
+        (res) =>
+          res?.status === 200 && navigate("/group/" + res.data.insertedId)
+      );
   };
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -27,14 +56,14 @@ export const Create = () => {
         [event.target.name]: event.target.value,
       }));
     }
-    console.log(groupDetails);
+    //console.log(groupDetails);
   };
 
   return (
     <>
       <div className="flex flex-col justify-center items-center h-screen create-page">
         <h1 className="text-7xl -mt-48 text-white pb-6 drop-shadow-lg">
-          What we doin?
+          {selected_motd}
         </h1>
         <form
           onSubmit={handleCreateGroup}

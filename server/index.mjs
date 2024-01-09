@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import corsOptions from "./config/corsOptions.mjs";
 import "./loadEnv.mjs";
 import "express-async-errors";
 import "./db/conn.mjs";
@@ -11,7 +12,7 @@ import { Server } from "socket.io";
 const PORT = process.env.PORT || 7000;
 const app = express();
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Load routes
