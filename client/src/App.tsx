@@ -8,7 +8,9 @@ import { Group } from "./pages/group";
 import { Report } from "./pages/report";
 import { Test } from "./pages/test";
 
-function App() {
+export const BASE_URL_API = "http://localhost:7000";
+
+export const App = () => {
   return (
     <>
       <NavBar />
@@ -23,6 +25,4 @@ function App() {
       </BrowserRouter>
     </>
   );
-}
-
-export default App;
+};

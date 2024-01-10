@@ -5,6 +5,7 @@ import { SetStateAction, useState } from "react";
 import { group } from "console";
 import { useNavigate } from "react-router-dom";
 import DatePicker from "react-datepicker";
+import { BASE_URL_API } from "./../App";
 
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -21,8 +22,6 @@ const motd = [
 
 const selected_motd = motd[Math.floor(Math.random() * motd.length)];
 
-export const BASE_URL_API = "http://localhost:7000";
-
 export const Create = () => {
   const [groupDetails, setGroupDetails] = useState({
     name: "",
@@ -30,11 +29,13 @@ export const Create = () => {
   });
   const [startDate, setStartDate] = useState(new Date());
 
-  const numRegex = /^[0-9\b]+$/;
+  const numRegex = /^\d*\.?\d*$/;
   const navigate = useNavigate();
 
   const handleCreateGroup = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    console.log(BASE_URL_API);
 
     axios
       .post(BASE_URL_API + "/group/create", {
