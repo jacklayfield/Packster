@@ -20,6 +20,7 @@
     "react": "^18.2.0",
     "react-bootstrap": "^2.8.0",
     "react-collapsed": "^4.0.4",
+    "react-datepicker": "^4.25.0",
     "react-dom": "^18.2.0",
     "react-paginate": "^8.2.0",
     "react-router-dom": "^6.14.2",
@@ -59,6 +60,7 @@
   },
   "devDependencies": {
     "@types/quill": "^2.0.10",
+    "@types/react-datepicker": "^4.19.5",
     "autoprefixer": "^10.4.14",
     "postcss": "^8.4.27",
     "tailwindcss": "^3.3.3"

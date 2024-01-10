@@ -1,9 +1,12 @@
 import tree from "../images/palm_tree.png";
 import mountains from "../images/mountains4.png";
 import axios from "axios";
-import { useState } from "react";
+import { SetStateAction, useState } from "react";
 import { group } from "console";
 import { useNavigate } from "react-router-dom";
+import DatePicker from "react-datepicker";
+
+import "react-datepicker/dist/react-datepicker.css";
 
 const motd = [
   "What's the plan?",
@@ -12,9 +15,7 @@ const motd = [
   "What we doin?",
   "Beach?",
   "How about Caving?",
-  "Mountains or Palm Trees?",
   "Skiing?",
-  "Right Here ↓",
   "Cool event below ↓",
 ];
 
@@ -25,9 +26,9 @@ export const BASE_URL_API = "http://localhost:7000";
 export const Create = () => {
   const [groupDetails, setGroupDetails] = useState({
     name: "",
-    date: "",
     budget: "",
   });
+  const [startDate, setStartDate] = useState(new Date());
 
   const numRegex = /^[0-9\b]+$/;
   const navigate = useNavigate();
@@ -36,7 +37,9 @@ export const Create = () => {
     event.preventDefault();
 
     axios
-      .post(BASE_URL_API + "/group/create", { data: groupDetails })
+      .post(BASE_URL_API + "/group/create", {
+        data: { ...groupDetails, date: startDate },
+      })
       .catch((error) => {
         console.log(error);
       })
@@ -49,14 +52,16 @@ export const Create = () => {
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (
       !(event.target.name === "budget") ||
+      event.target.value === "" ||
       numRegex.test(event.target.value)
     ) {
+      console.log("in");
       setGroupDetails((prev) => ({
         ...prev,
         [event.target.name]: event.target.value,
       }));
     }
-    //console.log(groupDetails);
+    console.log(groupDetails);
   };
 
   return (
@@ -67,32 +72,35 @@ export const Create = () => {
         </h1>
         <form
           onSubmit={handleCreateGroup}
-          className="flex flex-col justify-center items-center"
+          className="z-1 flex flex-col justify-center items-center"
         >
           <input
-            className="z-1 h-20 w-96 pr-6 pl-6 mb-6 bg-gray-200 drop-shadow-lg text-2xl rounded-3xl z-0 focus:shadow focus:outline-none"
+            className="h-20 w-96 pr-6 pl-6 bg-gray-200 drop-shadow-lg text-2xl rounded-3xl focus:shadow focus:outline-none"
             type="text"
             placeholder="Enter event/trip name"
             name="name"
             required={true}
+            value={groupDetails.name}
             onChange={handleChange}
           />
-          <input
-            className="z-1 h-12 w-72 pr-6 pl-6 mb-6 bg-gray-200 drop-shadow-lg text-xl rounded-3xl z-0 focus:shadow focus:outline-none"
-            type="text"
-            placeholder="Departure date (Optional)"
-            name="date"
-            onChange={handleChange}
+          <DatePicker
+            className="h-12 w-72 pr-6 pl-6 mt-6 bg-gray-200 drop-shadow-lg text-xl rounded-3xl focus:shadow focus:outline-none"
+            selected={startDate}
+            onChange={(date) => setStartDate(date ? date : new Date())}
+            portalId="root-portal"
+            dateFormat="MM-dd-yyyy"
+            placeholderText="Choose a departure date"
           />
           <input
-            className="z-1 h-12 w-72 pr-6 pl-6 mb-6 bg-gray-200 drop-shadow-lg text-xl rounded-3xl z-0 focus:shadow focus:outline-none"
+            className="h-12 w-72 pr-6 pl-6 mt-6 bg-gray-200 drop-shadow-lg text-xl rounded-3xl focus:shadow focus:outline-none"
             type="text"
-            placeholder="$ Budget (Optional)"
+            placeholder="$ Budget (ex. 30.50)"
             name="budget"
+            value={groupDetails.budget}
             onChange={handleChange}
           />
           <button
-            className="z-1 bg-gray-900 hover:bg-gray-800 hover:cursor- text-white text-lg font-bold py-2 px-4 rounded"
+            className="mt-6 bg-gray-900 hover:bg-gray-800 hover:cursor- text-white text-lg font-bold py-2 px-4 rounded"
             type="submit"
           >
             Create Group
