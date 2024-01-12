@@ -34,9 +34,6 @@ export const Create = () => {
 
   const handleCreateGroup = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    console.log(BASE_URL_API);
-
     axios
       .post(BASE_URL_API + "/group/create", {
         data: { ...groupDetails, date: startDate },
@@ -62,7 +59,6 @@ export const Create = () => {
         [event.target.name]: event.target.value,
       }));
     }
-    console.log(groupDetails);
   };
 
   return (

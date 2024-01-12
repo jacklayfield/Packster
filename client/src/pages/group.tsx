@@ -10,14 +10,6 @@ import axios from "axios";
 import { BASE_URL_API } from "../App";
 
 export const Group = () => {
-  const defaultListItem = {
-    name: "test",
-    require: true,
-    available: 1,
-    cost: 10,
-    who: ["shashank", "jack"],
-  };
-
   const location = useLocation();
   const path = location.pathname.split("/")[2];
 
@@ -48,20 +40,7 @@ export const Group = () => {
   return (
     <div className="flex flex-col justify-center items-center pt-24 ">
       <ListHeader data={groupDetails} />
-
       <List data={data} />
-
-      <button
-        onClick={() =>
-          setGroupDetails({
-            ...groupDetails,
-            budgetUsed: groupDetails.budgetUsed + 100,
-          })
-        }
-      >
-        {" "}
-        test{" "}
-      </button>
     </div>
   );
 };

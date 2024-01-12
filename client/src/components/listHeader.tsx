@@ -7,12 +7,18 @@ interface LHPROPS {
 }
 
 export const ListHeader: React.FC<LHPROPS> = ({ data }) => {
+  const date = new Date(data.date);
+  console.log(data.date);
   return (
     <div className="w-75 mt-3 ">
       <Row className="flex items-center">
         <Col>
           <div className="bg-blue-200 rounded-md px-6 py-6 text-center text-3xl font-bold mt-30">
-            {data.date.substring(0, 10)}
+            {date.toLocaleDateString("en-us", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
           </div>{" "}
         </Col>
         <Col xs={6}>
