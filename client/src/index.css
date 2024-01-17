@@ -146,3 +146,29 @@ body {
   position: relative;
   height: 99999px;
 }
+
+.bubble {
+  margin-bottom: 20px;
+  padding: 10px 10px 10px 10px;
+  border-radius: 10px;
+  font-size: 1.25rem;
+}
+
+.style-1 {
+  background: #adb5bd;
+  color: black;
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+  border-top-right-radius: 0px !important;
+  border-bottom-right-radius: 0px !important;
+}
+
+.style-2 {
+  background: rgb(91, 63, 91);
+  color: white;
+  font-weight: bold;
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+  border-top-left-radius: 0px !important;
+  border-bottom-left-radius: 0px !important;
+}

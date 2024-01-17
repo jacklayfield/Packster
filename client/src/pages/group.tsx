@@ -8,6 +8,7 @@ import { List } from "../components/list";
 import data from "../data.json";
 import axios from "axios";
 import { BASE_URL_API } from "../App";
+import { BASE_URL_CLIENT } from "../App";
 
 export const Group = () => {
   const location = useLocation();
@@ -39,6 +40,12 @@ export const Group = () => {
 
   return (
     <div className="flex flex-col justify-center items-center pt-24 ">
+      <div className="flex flex-row">
+        <div className="bubble style-1">Your Shareable Link: </div>
+        <div className="bubble style-2">
+          {BASE_URL_CLIENT} {location.pathname}
+        </div>
+      </div>
       <ListHeader data={groupDetails} />
       <List data={data} />
     </div>
