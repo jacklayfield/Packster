@@ -1,16 +1,24 @@
 import express from "express";
 import cors from "cors";
-import corsOptions from "./config/corsOptions.mjs";
-import "./loadEnv.mjs";
+import corsOptions from "./config/corsOptions";
+import "./loadEnv";
 import "express-async-errors";
-import "./db/conn.mjs";
-import group from "./routes/group.mjs";
-import item from "./routes/item.mjs";
+import group from "./routes/group";
+import item from "./routes/item";
 import http from "http";
 import { Server } from "socket.io";
+import { connectToDatabase } from "./db/conn";
 
 const PORT = process.env.PORT || 7000;
 const app = express();
+
+connectToDatabase()
+  .then(() => {
+    console.log("DB successfully connected");
+  })
+  .catch((error: Error) => {
+    console.error("Database connection failed", error);
+  });
 
 app.use(cors(corsOptions));
 app.use(express.json());

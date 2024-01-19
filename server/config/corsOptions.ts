@@ -1,4 +1,4 @@
-import allowedOrigins from "./allowedOrigins.mjs";
+import allowedOrigins from "./allowedOrigins";
 
 const corsOptions = {
   origin: (origin, callback) => {

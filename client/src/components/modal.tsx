@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 interface PPROPS {
-  setOpenModal: Function;
+  applyModal: Function;
 }
 
-export const Modal: React.FC<PPROPS> = ({ setOpenModal }) => {
+export const Modal: React.FC<PPROPS> = ({ applyModal }) => {
+  const [name, setName] = useState<String>("");
   return (
     <div className="z-2 w-screen h-screen bg-gray-200/[0.8] fixed flex items-center justify-center">
       <div className="w-[600px] h-[300px] rounded-2xl bg-white drop-shadow-2xl flex flex-col p-25">
@@ -16,14 +17,16 @@ export const Modal: React.FC<PPROPS> = ({ setOpenModal }) => {
             type="text"
             placeholder="Enter a username for the room"
             name="name"
-            required={true}
+            onChange={(e) => {
+              setName(e.target.value);
+            }}
           />
         </div>
         <div className="flex justify-center basis-1/5 mb-3">
           <button
             className="bg-blue-400 hover:bg-blue-500 hover:cursor- text-white text-lg font-bold py-2 px-4 rounded"
             onClick={() => {
-              setOpenModal(false);
+              name !== "" && applyModal(name);
             }}
           >
             Join Room

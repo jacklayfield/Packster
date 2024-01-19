@@ -1,1 +1,0 @@
-//  handle leave room event
