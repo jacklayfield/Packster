@@ -32,6 +32,8 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   const [loading, setLoading] = useState<Boolean>(false);
   const [modalOpen, setModalOpen] = useState<Boolean>(true);
   const [username, setUsername] = useState<String>("n/a");
+  const [messages, setMessages] = useState<string[]>([]);
+  const [room, setRoom] = useState("");
 
   useEffect(() => {
     const joinRoom = () => {
@@ -60,6 +62,18 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   const applyModal = (name: String) => {
     setUsername(name);
     setModalOpen(!modalOpen);
+
+    const room = grpId;
+    const msg = "connection";
+
+    try {
+      if (room !== "" && username !== "") {
+        console.log("in here");
+        socket.emit("clientMsg", { msg, room });
+      }
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   return (
@@ -67,9 +81,11 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
       {modalOpen && <Modal applyModal={applyModal} />}
       <div className="flex flex-col justify-center items-center pt-24 ">
         <div className="flex flex-row">
-          <div className="bubble style-1">Your Shareable Link: </div>
-          <div className="bubble style-2">
-            {BASE_URL_CLIENT} {location.pathname}
+          <div className="p-2 rounded-tl-lg rounded-bl-lg bg-purple-300 text-black text-xl">
+            Your Shareable Link:{" "}
+          </div>
+          <div className="p-2 rounded-tr-lg rounded-br-lg bg-purple-900 text-white font-semibold text-xl">
+            {BASE_URL_CLIENT + location.pathname}
           </div>
         </div>
         <ListHeader data={groupDetails} />

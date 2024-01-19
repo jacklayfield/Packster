@@ -22,6 +22,4 @@ export async function connectToDatabase() {
 
   collections.group = groupCollection;
   collections.item = itemCollection;
-
-  console.log(`Successfully connected to database`);
 }

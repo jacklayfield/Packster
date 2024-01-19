@@ -6,8 +6,10 @@ import "express-async-errors";
 import group from "./routes/group";
 import item from "./routes/item";
 import http from "http";
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
 import { connectToDatabase } from "./db/conn";
+// import { instrument } from "@socket.io/admin-ui";
+import { ClientToServerEvents, ServerToClientEvents } from "../typings";
 
 const PORT = process.env.PORT || 7000;
 const app = express();
@@ -36,19 +38,37 @@ app.use((err, _req, res, next) => {
 const server = http.createServer(app);
 
 // create io server
-const io = new Server(server, {
+const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
   cors: {
     origin: "http://localhost:3000",
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 
+// instrument(io, {
+//   auth: false,
+//   mode: "development",
+// });
+
 // io logic
-io.on("connection", (socket) => {
-  socket.emit("connect", { message: "a new client connected" });
-});
+
+io.on(
+  "connection",
+  (socket: Socket<ClientToServerEvents, ServerToClientEvents>) => {
+    socket.on("clientMsg", (data) => {
+      console.log(data);
+      if (data.room === "") {
+        io.sockets.emit("serverMsg", data);
+      } else {
+        socket.join(data.room);
+        io.to(data.room).emit("serverMsg", data);
+      }
+    });
+  }
+);
 
 // start the Express server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on port: ${PORT}`);
 });

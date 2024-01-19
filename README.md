@@ -9,4 +9,5 @@ TODO:
 - [x] Set up server in it's basic form (express, http, io)
 - [x] Design and create model for a "item" entry for the items list
 - [x] Implement frontend to create a "room" with a unique id
+- [x] Client to server socket connection established and tested
 - [ ] Work on join room event for a ids

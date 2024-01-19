@@ -8,7 +8,6 @@ interface LHPROPS {
 
 export const ListHeader: React.FC<LHPROPS> = ({ data }) => {
   const date = new Date(data.date);
-  console.log(data.date);
   return (
     <div className="w-75 mt-3 ">
       <Row className="flex items-center">
