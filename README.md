@@ -8,5 +8,5 @@ TODO:
 - - Went with mongo driver + joi. Also makes sense to just use a SQL DB but wanted to switch it up.
 - [x] Set up server in it's basic form (express, http, io)
 - [x] Design and create model for a "item" entry for the items list
-- [ ] Implement frontend to create a "room" with a unique id
+- [x] Implement frontend to create a "room" with a unique id
 - [ ] Work on join room event for a ids
