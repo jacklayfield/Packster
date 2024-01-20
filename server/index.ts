@@ -82,7 +82,7 @@ io.on(
 
     // ---------- JOIN ROOM EVENT ----------
     socket.on("join_room", (data) => {
-      const { username, room } = data; // Data sent from client when join_room event emitted
+      const { name, room } = data; // Data sent from client when join_room event emitted
       socket.join(room); // Join the user to a socket room
 
       let __createdtime__ = Date.now(); // Current timestamp
@@ -90,8 +90,11 @@ io.on(
 
       // Save the new user to the room
       grpRoom = room;
-      allUsers.push({ id: socket.id, username, room });
-      const chatRoomUsers = allUsers.filter((user) => user.room === room);
+      allUsers.push({ id: socket.id, name, room });
+      const users = allUsers.filter((user) => user.room === room);
+      console.log("users: ", users);
+      socket.to(room).emit("room_users", { users });
+      socket.emit("room_users", { users });
 
       //Get items for specific room and emit them to all users
     });
@@ -105,7 +108,7 @@ io.on(
 
     // ---------- LEAVE ROOM EVENT ----------
     socket.on("leave_room", (data) => {
-      const { username, room } = data;
+      const { name, room } = data;
       socket.leave(room);
       // Remove user from memory
     });

@@ -34,6 +34,7 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   const [username, setUsername] = useState<string>("n/a");
   const [messages, setMessages] = useState<string[]>([]);
   const [room, setRoom] = useState("");
+  const [roomUsers, setRoomUsers] = useState<string[]>([]);
 
   useEffect(() => {
     const joinRoom = () => {
@@ -44,6 +45,14 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
       // } catch (error) {
       //   console.log(error);
       // }
+    };
+
+    const receiveUsers = () => {
+      socket.on("room_users", (data) => {
+        console.log(data.users);
+        setRoomUsers(data.users);
+      });
+      return () => socket.off("room_users");
     };
 
     const fetchGroup = async () => {
@@ -57,7 +66,8 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
       setLoading(false);
     };
     fetchGroup();
-  }, [username]);
+    receiveUsers();
+  }, [username, socket]);
 
   const applyModal = (name: string) => {
     setUsername(name);
@@ -66,9 +76,9 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     const room = grpId;
 
     try {
-      if (room !== "" && username !== "") {
+      if (room !== "" && name !== "") {
         console.log("in here");
-        socket.emit("join_room", { username, room });
+        socket.emit("join_room", { name, room });
       }
     } catch (error) {
       console.log(error);
@@ -88,7 +98,6 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
           </div>
         </div>
         <ListHeader data={groupDetails} />
-
         <List data={data} />
       </div>
     </>
