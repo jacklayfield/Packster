@@ -31,7 +31,7 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   const [listItems, setListItems] = useState([{}]);
   const [loading, setLoading] = useState<Boolean>(false);
   const [modalOpen, setModalOpen] = useState<Boolean>(true);
-  const [username, setUsername] = useState<String>("n/a");
+  const [username, setUsername] = useState<string>("n/a");
   const [messages, setMessages] = useState<string[]>([]);
   const [room, setRoom] = useState("");
 
@@ -59,17 +59,16 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     fetchGroup();
   }, [username]);
 
-  const applyModal = (name: String) => {
+  const applyModal = (name: string) => {
     setUsername(name);
     setModalOpen(!modalOpen);
 
     const room = grpId;
-    const msg = "connection";
 
     try {
       if (room !== "" && username !== "") {
         console.log("in here");
-        socket.emit("clientMsg", { msg, room });
+        socket.emit("join_room", { username, room });
       }
     } catch (error) {
       console.log(error);
