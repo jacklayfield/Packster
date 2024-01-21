@@ -66,7 +66,6 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
 
 let grpRoom = ""; // Grp ID
 let allUsers = []; // All users in current room
-
 io.on(
   "connection",
   (socket: Socket<ClientToServerEvents, ServerToClientEvents>) => {
@@ -88,9 +87,21 @@ io.on(
       let __createdtime__ = Date.now(); // Current timestamp
       // Send message to all users currently in the room, apart from the user that just joined
 
+      // User color logic (Only picks "light" colors for themeing purposes)
+      var Smletters = "01234567";
+      var Lgletters = "89ABCDEF";
+      var color = "#";
+      for (var i = 0; i < 6; i++) {
+        if (i % 2 == 0) {
+          color += Lgletters[Math.floor(Math.random() * 8)];
+        } else {
+          color += Smletters[Math.floor(Math.random() * 8)];
+        }
+      }
+
       // Save the new user to the room
       grpRoom = room;
-      allUsers.push({ id: socket.id, name, room });
+      allUsers.push({ id: socket.id, name, room, color: color });
       const users = allUsers.filter((user) => user.room === room);
       console.log("users: ", users);
       socket.to(room).emit("room_users", { users });

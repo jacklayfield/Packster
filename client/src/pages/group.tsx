@@ -5,6 +5,7 @@ import Row from "react-bootstrap/esm/Row";
 import { ListItem } from "../components/listItem";
 import { ListHeader } from "../components/listHeader";
 import { List } from "../components/list";
+import { OnlineUsers } from "../components/onlineUsers";
 import data from "../data.json";
 import axios from "axios";
 import { BASE_URL_API } from "../App";
@@ -12,6 +13,8 @@ import { BASE_URL_CLIENT } from "../App";
 import { Modal } from "../components/modal";
 import * as io from "socket.io-client";
 import { ServerToClientEvents, ClientToServerEvents } from "../../../typings";
+
+import { Item, User } from "../../../typings";
 
 interface GPROPS {
   socket: io.Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -28,13 +31,13 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     budgetUsed: 0,
   });
 
-  const [listItems, setListItems] = useState([{}]);
+  const [listItems, setListItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState<Boolean>(false);
   const [modalOpen, setModalOpen] = useState<Boolean>(true);
   const [username, setUsername] = useState<string>("n/a");
   const [messages, setMessages] = useState<string[]>([]);
   const [room, setRoom] = useState("");
-  const [roomUsers, setRoomUsers] = useState<string[]>([]);
+  const [roomUsers, setRoomUsers] = useState<User[]>([]);
 
   useEffect(() => {
     const joinRoom = () => {
@@ -98,6 +101,7 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
           </div>
         </div>
         <ListHeader data={groupDetails} />
+        <OnlineUsers roomUsers={roomUsers} />
         <List data={data} />
       </div>
     </>

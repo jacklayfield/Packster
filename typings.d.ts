@@ -1,6 +1,6 @@
 export interface ServerToClientEvents {
   serverMsg: (data: { msg: string; room: string }) => void;
-  room_users: (date: { users: string[] }) => void;
+  room_users: (date: { users: User[] }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -17,4 +17,11 @@ export type Item = {
   usersBringing: string[];
   usersExempted: string[];
   required: boolean;
+};
+
+export type User = {
+  id: string;
+  name: string;
+  room: string;
+  color: string;
 };
