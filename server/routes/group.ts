@@ -14,7 +14,7 @@ router.post("/create", async (req, res) => {
       budgetUsed: 0,
     };
 
-    console.log(newDoc);
+    //console.log(newDoc);
 
     // Validate the json
     if (groupModel.validate(newDoc).error) {
@@ -22,10 +22,10 @@ router.post("/create", async (req, res) => {
     }
 
     // Insert data
-    console.log("here");
+    //console.log("here");
     let result = await collections.group.insertOne(newDoc);
 
-    console.log("here2");
+    //console.log("here2");
     res.status(200).send(result);
   } catch (error) {
     res.status(500).json(error);

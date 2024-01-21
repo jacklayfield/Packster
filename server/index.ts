@@ -10,6 +10,7 @@ import { Server, Socket } from "socket.io";
 import { connectToDatabase } from "./db/conn";
 // import { instrument } from "@socket.io/admin-ui";
 import { ClientToServerEvents, ServerToClientEvents } from "../typings";
+import { mongoGetItems } from "./services/mongo-get-items";
 
 const PORT = process.env.PORT || 7000;
 const app = express();
@@ -70,7 +71,7 @@ io.on(
   "connection",
   (socket: Socket<ClientToServerEvents, ServerToClientEvents>) => {
     socket.on("clientMsg", (data) => {
-      console.log(data);
+      //console.log(data);
       if (data.room === "") {
         io.sockets.emit("serverMsg", data);
       } else {
@@ -103,11 +104,18 @@ io.on(
       grpRoom = room;
       allUsers.push({ id: socket.id, name, room, color: color });
       const users = allUsers.filter((user) => user.room === room);
-      console.log("users: ", users);
+      //console.log("users: ", users);
       socket.to(room).emit("room_users", { users });
       socket.emit("room_users", { users });
 
       //Get items for specific room and emit them to all users
+      mongoGetItems("65ac6d7e46e7ab14e320b1e4")
+        .then((items) => {
+          socket.emit("send_items", { items });
+        })
+        .catch((error) => {
+          console.error(error);
+        });
     });
 
     // ---------- SEND ITEM EVENT ----------
