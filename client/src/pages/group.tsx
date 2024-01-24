@@ -40,14 +40,11 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   const [roomUsers, setRoomUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    const joinRoom = () => {
-      // try {
-      //   if (grpId !== "" && username !== "") {
-      //     socket.emit("join_room", { username, room });
-      //   }
-      // } catch (error) {
-      //   console.log(error);
-      // }
+    const receiveItems = () => {
+      socket.on("send_items", (data) => {
+        console.log(data);
+        setListItems(data.items);
+      });
     };
 
     const receiveUsers = () => {
@@ -70,6 +67,7 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     };
     fetchGroup();
     receiveUsers();
+    receiveItems();
   }, [username, socket]);
 
   const applyModal = (name: string) => {

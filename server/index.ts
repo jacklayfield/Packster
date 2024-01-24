@@ -107,10 +107,10 @@ io.on(
       //console.log("users: ", users);
       socket.to(room).emit("room_users", { users });
       socket.emit("room_users", { users });
-
       //Get items for specific room and emit them to all users
       mongoGetItems("65ac6d7e46e7ab14e320b1e4")
         .then((items) => {
+          console.log(items);
           socket.emit("send_items", { items });
         })
         .catch((error) => {
