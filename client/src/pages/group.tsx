@@ -100,7 +100,7 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
         </div>
         <ListHeader data={groupDetails} />
         <OnlineUsers roomUsers={roomUsers} />
-        <List data={data} />
+        <List items={listItems} />
       </div>
     </>
   );
