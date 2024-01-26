@@ -34,7 +34,7 @@ export const ProgressBar: React.FC<PPROPS> = ({
   } as React.CSSProperties;
 
   return (
-    <div className="bg-gray-200 rounded-md text-center text-3xl px-6 py-6 font-bold mt-30 relative z-1">
+    <div className="bg-white rounded-md text-center text-3xl px-6 py-6 font-bold mt-30 relative z-1">
       <span>{`$${completed} / $${total}`}</span>
       <div style={fillerStyles}></div>
     </div>

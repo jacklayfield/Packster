@@ -89,12 +89,12 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   return (
     <>
       {modalOpen && <Modal applyModal={applyModal} />}
-      <div className="flex flex-col justify-center items-center pt-24 ">
+      <div className="flex flex-col items-center pt-24 h-screen bg-gray-200">
         <div className="flex flex-row">
-          <div className="p-2 rounded-tl-lg rounded-bl-lg bg-purple-300 text-black text-xl">
+          <div className="p-2 rounded-tl-lg rounded-bl-lg bg-violet-400 text-black text-xl">
             Your Shareable Link:{" "}
           </div>
-          <div className="p-2 rounded-tr-lg rounded-br-lg bg-purple-900 text-white font-semibold text-xl">
+          <div className="p-2 rounded-tr-lg rounded-br-lg bg-violet-800 text-white font-semibold text-xl">
             {BASE_URL_CLIENT + location.pathname}
           </div>
         </div>

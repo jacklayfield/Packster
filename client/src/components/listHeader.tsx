@@ -22,7 +22,7 @@ export const ListHeader: React.FC<LHPROPS> = ({ data }) => {
         </Col>
         <Col xs={6}>
           {" "}
-          <div className="bg-gray-200 rounded-md px-9 py-9 text-center text-4xl font-bold mt-30">
+          <div className="bg-white rounded-md px-9 py-9 text-center text-4xl font-bold mt-30">
             {data.name}
           </div>{" "}
         </Col>
