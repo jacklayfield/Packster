@@ -10,4 +10,7 @@ TODO:
 - [x] Design and create model for a "item" entry for the items list
 - [x] Implement frontend to create a "room" with a unique id
 - [x] Client to server socket connection established and tested
-- [ ] Work on join room event for a ids
+- [x] Implement join room event for a ids
+- [x] Implement item fetching for unique room
+- [ ] Implement add item
+- [ ] Decide how to handle client users
