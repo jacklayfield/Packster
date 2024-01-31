@@ -7,7 +7,7 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   clientMsg: (data: { msg: string; room: string }) => void;
   join_room: (data: { name: string; room: string }) => void;
-  send_item: (data: { item: Item }) => void;
+  send_item: (data: { item: Item; room: string }) => void;
   leave_room: (data: { name: string; room: string }) => void;
 }
 

@@ -11,6 +11,7 @@ import { connectToDatabase } from "./db/conn";
 // import { instrument } from "@socket.io/admin-ui";
 import { ClientToServerEvents, ServerToClientEvents } from "../typings";
 import { mongoGetItems } from "./services/mongo-get-items";
+import { mongoSaveItem } from "./services/mongo-save-item";
 
 const PORT = process.env.PORT || 7000;
 const app = express();
@@ -120,9 +121,10 @@ io.on(
 
     // ---------- SEND ITEM EVENT ----------
     socket.on("send_item", (data) => {
-      const { item } = data;
+      const { item, room } = data;
       // Send to all users in room, including sender
       // Save to DB
+      mongoSaveItem(item, room);
     });
 
     // ---------- LEAVE ROOM EVENT ----------

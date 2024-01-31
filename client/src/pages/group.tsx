@@ -78,7 +78,6 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
 
     try {
       if (room !== "" && name !== "") {
-        console.log("in here");
         socket.emit("join_room", { name, room });
       }
     } catch (error) {
@@ -92,6 +91,18 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     //   - This will satisfy the conditional render for editable item
     // B. Disable the add group button
     //   - This will ensure the user does not try to add a group while already working on one.
+
+    console.log("add clicked");
+    let item: Item = {
+      name: "peanuts",
+      quantity: 3,
+      cost: 7.5,
+      usersBringing: ["Connor", "Shashank"],
+      usersExempted: ["Bob"],
+      required: false,
+      groupId: "65ac6d7e46e7ab14e320b1e4",
+    };
+    socket.emit("send_item", { item, room });
   };
 
   /**
@@ -114,7 +125,10 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
         <ListHeader data={groupDetails} />
         <OnlineUsers roomUsers={roomUsers} />
         <List items={listItems} />
-        <div className="w-[80%] mt-2 text-gray-600 hover:text-gray-900 hover:border-gray-900 hover:bg-gray-300 hover:cursor-pointer border-3 border-dotted border-gray-600 rounded-md px-3 py-3 text-center text-lg">
+        <div
+          className="w-[80%] mt-2 text-gray-600 hover:text-gray-900 hover:border-gray-900 hover:bg-gray-300 hover:cursor-pointer border-3 border-dotted border-gray-600 rounded-md px-3 py-3 text-center text-lg"
+          onClick={handleAddClicked}
+        >
           <span className="fa-solid fa-circle-plus fa-xl"></span> Add an item
         </div>
       </div>
