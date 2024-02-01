@@ -106,7 +106,7 @@ io.on(
       allUsers.push({ id: socket.id, name, room, color: color });
       const users = allUsers.filter((user) => user.room === room);
       //console.log("users: ", users);
-      socket.to(room).emit("room_users", { users });
+      socket.to(grpRoom).emit("room_users", { users });
       socket.emit("room_users", { users });
       //Get items for specific room and emit them to all users
       mongoGetItems(grpRoom)
@@ -122,9 +122,13 @@ io.on(
     // ---------- SEND ITEM EVENT ----------
     socket.on("send_item", (data) => {
       const { item, room } = data;
+      grpRoom = room;
       // Send to all users in room, including sender
+      io.in(room).emit("receive_item", { item });
       // Save to DB
-      mongoSaveItem(item, room);
+      mongoSaveItem(item, room)
+        .then((response) => console.log(response))
+        .catch((err) => console.log(err));
     });
 
     // ---------- LEAVE ROOM EVENT ----------

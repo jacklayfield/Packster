@@ -42,6 +42,7 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   useEffect(() => {
     const receiveItems = () => {
       socket.on("send_items", (data) => {
+        console.log("send_items");
         console.log(data);
         setListItems(data.items);
       });
@@ -53,6 +54,24 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
         setRoomUsers(data.users);
       });
       return () => socket.off("room_users");
+    };
+
+    const receiveItem = () => {
+      socket.on("receive_item", (data) => {
+        console.log(data);
+        setListItems((state) => [
+          ...state,
+          {
+            name: data.item.name,
+            quantity: data.item.quantity,
+            cost: data.item.cost,
+            usersBringing: data.item.usersBringing,
+            usersExempted: data.item.usersExempted,
+            required: data.item.required,
+            groupId: data.item.groupId,
+          },
+        ]);
+      });
     };
 
     const fetchGroup = async () => {

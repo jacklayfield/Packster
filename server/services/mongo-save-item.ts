@@ -10,7 +10,7 @@ export const mongoSaveItem = async (item: Item, room: string) => {
       return;
     }
 
-    results = collections.item.insertOne(item);
+    results = await collections.item.insertOne(item);
 
     console.log(results);
   } catch (error) {

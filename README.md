@@ -12,7 +12,8 @@ TODO:
 - [x] Client to server socket connection established and tested
 - [x] Implement join room event for a ids
 - [x] Implement item fetching for unique room
-- [ ] Implement add item
+- [x] Implement add item (backend)
+- [ ] Implement add item (frontend)
 - [ ] Decide how to handle client users
 
   - A. Users need to create an account
