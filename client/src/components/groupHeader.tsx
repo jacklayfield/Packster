@@ -6,7 +6,7 @@ interface LHPROPS {
   data: { name: string; date: string; budget: number; budgetUsed: number };
 }
 
-export const ListHeader: React.FC<LHPROPS> = ({ data }) => {
+export const GroupHeader: React.FC<LHPROPS> = ({ data }) => {
   const date = new Date(data.date);
   return (
     <div className="w-75 mt-3 ">

@@ -1,8 +1,7 @@
 import tree from "../images/palm_tree.png";
 import mountains from "../images/mountains4.png";
 import axios from "axios";
-import { SetStateAction, useState } from "react";
-import { group } from "console";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import { BASE_URL_API } from "./../App";

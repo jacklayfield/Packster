@@ -2,11 +2,9 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import Col from "react-bootstrap/esm/Col";
 import Row from "react-bootstrap/esm/Row";
-import { ListItem } from "../components/listItem";
-import { ListHeader } from "../components/listHeader";
+import { GroupHeader } from "../components/groupHeader";
 import { List } from "../components/list";
 import { OnlineUsers } from "../components/onlineUsers";
-import data from "../data.json";
 import axios from "axios";
 import { BASE_URL_API } from "../App";
 import { BASE_URL_CLIENT } from "../App";
@@ -35,11 +33,8 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   const [loading, setLoading] = useState<Boolean>(false);
   const [modalOpen, setModalOpen] = useState<Boolean>(true);
   const [username, setUsername] = useState<string>("n/a");
-  const [messages, setMessages] = useState<string[]>([]);
-  const [room, setRoom] = useState("");
   const [roomUsers, setRoomUsers] = useState<User[]>([]);
-
-  const [createItem, setCreateItem] = useState<Boolean>(false);
+  // const [createItem, setCreateItem] = useState<Boolean>(false);
 
   useEffect(() => {
     socket.on("receive_items", (data) => {
@@ -61,7 +56,6 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     });
 
     // Remove event listener on component unmount
-    //socket.off("room_users");
     return () => {
       socket.off("room_users");
     };
@@ -103,7 +97,7 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
       setLoading(false);
     };
     fetchGroup();
-  }, [username]);
+  }, [username, grpId]);
 
   const applyModal = (name: string) => {
     setUsername(name);
@@ -120,33 +114,11 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     }
   };
 
-  const handleAddClicked = () => {
-    // In here we should:
-    // A. set new item mode to true
-    //   - This will satisfy the conditional render for editable item
-    // B. Disable the add group button
-    //   - This will ensure the user does not try to add a group while already working on one.
+  const handleAddClicked = () => {};
 
-    console.log("add clicked", socket);
-    let item: Item = {
-      name: "peanuts15",
-      quantity: 3,
-      cost: 7.5,
-      usersBringing: ["Connor", "Shashank"],
-      usersExempted: ["Bob"],
-      required: false,
-      groupId: "65bc486442a9af7a3e70a51e",
-    };
-    const room = "65bc486442a9af7a3e70a51e";
-    console.log("room", room);
-    socket.emit("send_item", { item, room });
-  };
-
-  /**
-   * function responsible for sending a new item socket event
-   */
-  const sendItem = () => {};
-
+  if (loading) {
+    return <div>Loading...</div>;
+  }
   return (
     <div className="h-screen">
       {modalOpen && <Modal applyModal={applyModal} />}
@@ -159,14 +131,29 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
             {BASE_URL_CLIENT + location.pathname}
           </div>
         </div>
-        <ListHeader data={groupDetails} />
-        <OnlineUsers roomUsers={roomUsers} />
-        <List items={listItems} />
-        <div
-          className="w-[80%] mt-2 mb-4 text-gray-600 hover:text-gray-900 hover:border-gray-900 hover:bg-gray-300 hover:cursor-pointer border-3 border-dotted border-gray-600 rounded-md px-3 py-3 text-center text-lg"
-          onClick={handleAddClicked}
-        >
-          <span className="fa-solid fa-circle-plus fa-xl"></span> Add an item
+        <GroupHeader data={groupDetails} />
+
+        <div className="w-[80%]">
+          <OnlineUsers roomUsers={roomUsers} />
+
+          <div className=" bg-gray-200 rounded-md pl-3 pr-3 pt-6 pb-6 text-center text-xl mt-30 font-bold">
+            <Row>
+              <Col>Name</Col>
+              <Col>Quantity</Col>
+              <Col>Cost per</Col>
+              <Col>Required?</Col>
+              <Col>Who's packing</Col>
+              <Col>Will not use</Col>
+              <Col>Click to claim</Col>
+            </Row>
+          </div>
+          <div
+            className="mt-2 mb-2 text-gray-600 hover:text-gray-900 hover:border-gray-900 hover:bg-gray-300 hover:cursor-pointer border-3 border-dotted border-gray-600 rounded-md px-3 py-3 text-center text-lg"
+            onClick={handleAddClicked}
+          >
+            <span className="fa-solid fa-circle-plus fa-xl"></span> Add an item
+          </div>
+          <List items={listItems} />
         </div>
       </div>
     </div>
