@@ -39,41 +39,59 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   const [room, setRoom] = useState("");
   const [roomUsers, setRoomUsers] = useState<User[]>([]);
 
+  const [createItem, setCreateItem] = useState<Boolean>(false);
+
   useEffect(() => {
-    const receiveItems = () => {
-      socket.on("send_items", (data) => {
-        console.log("send_items");
-        console.log(data);
-        setListItems(data.items);
-      });
-    };
+    socket.on("receive_items", (data) => {
+      console.log("receive_items");
+      console.log(data);
+      setListItems(data.items);
+    });
 
-    const receiveUsers = () => {
-      socket.on("room_users", (data) => {
-        console.log(data.users);
-        setRoomUsers(data.users);
-      });
-      return () => socket.off("room_users");
+    // Remove event listener on component unmount
+    return () => {
+      socket.off("receive_items");
     };
+  }, [socket]);
 
-    const receiveItem = () => {
-      socket.on("receive_item", (data) => {
-        console.log(data);
-        setListItems((state) => [
-          ...state,
-          {
-            name: data.item.name,
-            quantity: data.item.quantity,
-            cost: data.item.cost,
-            usersBringing: data.item.usersBringing,
-            usersExempted: data.item.usersExempted,
-            required: data.item.required,
-            groupId: data.item.groupId,
-          },
-        ]);
-      });
+  useEffect(() => {
+    socket.on("room_users", (data) => {
+      console.log(data.users);
+      setRoomUsers(data.users);
+    });
+
+    // Remove event listener on component unmount
+    //socket.off("room_users");
+    return () => {
+      socket.off("room_users");
     };
+  }, [socket]);
 
+  useEffect(() => {
+    socket.on("receive_item", (data) => {
+      console.log("recEIVE");
+      console.log(data);
+      setListItems((state) => [
+        ...state,
+        {
+          name: data.item.name,
+          quantity: data.item.quantity,
+          cost: data.item.cost,
+          usersBringing: data.item.usersBringing,
+          usersExempted: data.item.usersExempted,
+          required: data.item.required,
+          groupId: data.item.groupId,
+        },
+      ]);
+    });
+
+    // Remove event listener on component unmount
+    return () => {
+      socket.off("receive_item");
+    };
+  }, [socket]);
+
+  useEffect(() => {
     const fetchGroup = async () => {
       setLoading(true);
       try {
@@ -85,9 +103,7 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
       setLoading(false);
     };
     fetchGroup();
-    receiveUsers();
-    receiveItems();
-  }, [username, socket]);
+  }, [username]);
 
   const applyModal = (name: string) => {
     setUsername(name);
@@ -111,16 +127,18 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     // B. Disable the add group button
     //   - This will ensure the user does not try to add a group while already working on one.
 
-    console.log("add clicked");
+    console.log("add clicked", socket);
     let item: Item = {
-      name: "peanuts",
+      name: "peanuts15",
       quantity: 3,
       cost: 7.5,
       usersBringing: ["Connor", "Shashank"],
       usersExempted: ["Bob"],
       required: false,
-      groupId: "65ac6d7e46e7ab14e320b1e4",
+      groupId: "65bc486442a9af7a3e70a51e",
     };
+    const room = "65bc486442a9af7a3e70a51e";
+    console.log("room", room);
     socket.emit("send_item", { item, room });
   };
 
@@ -130,9 +148,9 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   const sendItem = () => {};
 
   return (
-    <>
+    <div className="h-screen">
       {modalOpen && <Modal applyModal={applyModal} />}
-      <div className="flex flex-col items-center pt-24 h-screen bg-gray-200">
+      <div className="flex flex-col items-center pt-24 min-h-full m bg-gray-200">
         <div className="flex flex-row">
           <div className="p-2 rounded-tl-lg rounded-bl-lg bg-violet-400 text-black text-xl">
             Your Shareable Link:{" "}
@@ -145,12 +163,12 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
         <OnlineUsers roomUsers={roomUsers} />
         <List items={listItems} />
         <div
-          className="w-[80%] mt-2 text-gray-600 hover:text-gray-900 hover:border-gray-900 hover:bg-gray-300 hover:cursor-pointer border-3 border-dotted border-gray-600 rounded-md px-3 py-3 text-center text-lg"
+          className="w-[80%] mt-2 mb-4 text-gray-600 hover:text-gray-900 hover:border-gray-900 hover:bg-gray-300 hover:cursor-pointer border-3 border-dotted border-gray-600 rounded-md px-3 py-3 text-center text-lg"
           onClick={handleAddClicked}
         >
           <span className="fa-solid fa-circle-plus fa-xl"></span> Add an item
         </div>
       </div>
-    </>
+    </div>
   );
 };

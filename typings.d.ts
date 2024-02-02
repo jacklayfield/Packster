@@ -1,7 +1,7 @@
 export interface ServerToClientEvents {
   serverMsg: (data: { msg: string; room: string }) => void;
   room_users: (date: { users: User[] }) => void;
-  send_items: (data: { items: Item[] }) => void;
+  receive_items: (data: { items: Item[] }) => void;
   receive_item: (data: { item: Item }) => void;
 }
 
