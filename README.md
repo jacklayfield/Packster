@@ -14,6 +14,7 @@ TODO:
 - [x] Implement item fetching for unique room
 - [x] Implement add item (backend)
 - [ ] Implement add item (frontend)
+- [ ] Create "editable" item
 - [ ] Set up budget feature
 - [x] Decide how to handle client users (See below for details, going with C with the addition noted for now)
 - [ ] Set up user table / validation
@@ -21,8 +22,6 @@ TODO:
 - [ ] Implement user auth (login)
 - [ ] Frontend login screen
 - [ ] Frontend session management
-
-
 
   - A. Users need to create an account
     - Pros: Easy to handle permissions / preferences, Can log in from multiple locations.

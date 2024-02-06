@@ -13,6 +13,7 @@ import * as io from "socket.io-client";
 import { ServerToClientEvents, ClientToServerEvents } from "../../../typings";
 
 import { Item, User } from "../../../typings";
+import { EditableItem } from "../components/editableItem";
 
 interface GPROPS {
   socket: io.Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -116,6 +117,16 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
 
   const handleAddClicked = () => {};
 
+  let item: Item = {
+    name: "peanuts15",
+    quantity: 3,
+    cost: 7.5,
+    usersBringing: ["Connor", "Shashank"],
+    usersExempted: ["Bob"],
+    required: false,
+    groupId: "65bc486442a9af7a3e70a51e",
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -153,6 +164,9 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
           >
             <span className="fa-solid fa-circle-plus fa-xl"></span> Add an item
           </div>
+
+          <EditableItem item={item} />
+
           <List items={listItems} />
         </div>
       </div>
