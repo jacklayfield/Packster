@@ -15,6 +15,7 @@ TODO:
 - [x] Implement add item (backend)
 - [ ] Implement add item (frontend)
 - [ ] Create "editable" item
+- [ ] Configure "editable" item
 - [ ] Set up budget feature
 - [x] Decide how to handle client users (See below for details, going with C with the addition noted for now)
 - [ ] Set up user table / validation
