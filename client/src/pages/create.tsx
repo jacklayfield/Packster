@@ -52,7 +52,6 @@ export const Create = () => {
       event.target.value === "" ||
       numRegex.test(event.target.value)
     ) {
-      console.log("in");
       setGroupDetails((prev) => ({
         ...prev,
         [event.target.name]: event.target.value,

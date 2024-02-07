@@ -30,12 +30,21 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     budgetUsed: 0,
   });
 
+  const [itemDetails, setItemDetails] = useState({
+    name: "",
+    quantity: 0,
+    cost: 0,
+    usersBringing: "",
+    usersExempted: "",
+    required: "No",
+  });
+
   const [listItems, setListItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState<Boolean>(false);
   const [modalOpen, setModalOpen] = useState<Boolean>(true);
   const [username, setUsername] = useState<string>("n/a");
   const [roomUsers, setRoomUsers] = useState<User[]>([]);
-  // const [createItem, setCreateItem] = useState<Boolean>(false);
+  const [editItem, setEditItem] = useState<Boolean>(false);
 
   useEffect(() => {
     socket.on("receive_items", (data) => {
@@ -117,14 +126,26 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
 
   const handleAddClicked = () => {};
 
-  let item: Item = {
-    name: "peanuts15",
-    quantity: 3,
-    cost: 7.5,
-    usersBringing: ["Connor", "Shashank"],
-    usersExempted: ["Bob"],
-    required: false,
-    groupId: "65bc486442a9af7a3e70a51e",
+  // let item: Item = {
+  //   name: "peanuts15",
+  //   quantity: 3,
+  //   cost: 7.5,
+  //   usersBringing: ["Connor", "Shashank"],
+  //   usersExempted: ["Bob"],
+  //   required: false,
+  //   groupId: "65bc486442a9af7a3e70a51e",
+  // };
+
+  const handleEdit = () => {
+    setEditItem(true);
+    setItemDetails({
+      name: "peanuts1ww5",
+      quantity: 3,
+      cost: 7.5,
+      usersBringing: "Connor, Shashank",
+      usersExempted: "Bob",
+      required: "No",
+    });
   };
 
   if (loading) {
@@ -165,7 +186,11 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
             <span className="fa-solid fa-circle-plus fa-xl"></span> Add an item
           </div>
 
-          <EditableItem item={item} />
+          {editItem && (
+            <EditableItem item={itemDetails} setItem={setItemDetails} />
+          )}
+
+          <button onClick={handleEdit}>Edit</button>
 
           <List items={listItems} />
         </div>
