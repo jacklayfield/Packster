@@ -186,9 +186,9 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
             <span className="fa-solid fa-circle-plus fa-xl"></span> Add an item
           </div>
 
-          {editItem && (
+          {/* {editItem && (
             <EditableItem item={itemDetails} setItem={setItemDetails} />
-          )}
+          )} */}
 
           <button onClick={handleEdit}>Edit</button>
 
