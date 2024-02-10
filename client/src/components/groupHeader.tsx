@@ -3,11 +3,13 @@ import Row from "react-bootstrap/esm/Row";
 import ProgressBar from "./progressBar";
 
 interface LHPROPS {
-  data: { name: string; date: string; budget: number; budgetUsed: number };
+  data: { name: string; date: string; budget: number };
+  budgetUsed: number;
 }
 
-export const GroupHeader: React.FC<LHPROPS> = ({ data }) => {
+export const GroupHeader: React.FC<LHPROPS> = ({ data, budgetUsed }) => {
   const date = new Date(data.date);
+  console.log(budgetUsed);
   return (
     <div className="w-75 mt-3 ">
       <Row className="flex items-center">
@@ -29,7 +31,7 @@ export const GroupHeader: React.FC<LHPROPS> = ({ data }) => {
         <Col>
           <ProgressBar
             bgcolor={"#BBF7D0"}
-            completed={data.budgetUsed}
+            completed={budgetUsed}
             total={data.budget}
           />
         </Col>

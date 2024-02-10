@@ -23,13 +23,6 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   const location = useLocation();
   const grpId = location.pathname.split("/")[2];
 
-  const [groupDetails, setGroupDetails] = useState({
-    name: "",
-    date: "",
-    budget: 0,
-    budgetUsed: 0,
-  });
-
   const [itemDetails, setItemDetails] = useState({
     name: "",
     quantity: 0,
@@ -45,12 +38,40 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   const [username, setUsername] = useState<string>("n/a");
   const [roomUsers, setRoomUsers] = useState<User[]>([]);
   const [editItem, setEditItem] = useState<Boolean>(false);
+  const [budgetUsed, setBudgetUsed] = useState<number>(0);
+
+  const [groupDetails, setGroupDetails] = useState({
+    name: "",
+    date: "",
+    budget: 0,
+  });
+
+  useEffect(() => {
+    const fetchGroup = async () => {
+      setLoading(true);
+      try {
+        const res = await axios.get(BASE_URL_API + "/group/id=" + grpId);
+        setGroupDetails(res.data);
+      } catch (error) {
+        console.log(error);
+      }
+      setLoading(false);
+    };
+    fetchGroup();
+  }, [username, grpId]);
 
   useEffect(() => {
     socket.on("receive_items", (data) => {
       console.log("receive_items");
+      // console.log(
+      //   "res:",
+      //   data.items.reduce((sum, obj) => sum + obj.cost * obj.quantity, 0)
+      // );
       console.log(data);
       setListItems(data.items);
+      setBudgetUsed(
+        data.items.reduce((sum, obj) => sum + obj.cost * obj.quantity, 0)
+      );
     });
 
     // Remove event listener on component unmount
@@ -87,6 +108,9 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
           groupId: data.item.groupId,
         },
       ]);
+      setBudgetUsed(
+        (prevState) => prevState + data.item.quantity * data.item.cost
+      );
     });
 
     // Remove event listener on component unmount
@@ -94,20 +118,6 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
       socket.off("receive_item");
     };
   }, [socket]);
-
-  useEffect(() => {
-    const fetchGroup = async () => {
-      setLoading(true);
-      try {
-        const res = await axios.get(BASE_URL_API + "/group/id=" + grpId);
-        setGroupDetails(res.data);
-      } catch (error) {
-        console.log(error);
-      }
-      setLoading(false);
-    };
-    fetchGroup();
-  }, [username, grpId]);
 
   const applyModal = (name: string) => {
     setUsername(name);
@@ -124,23 +134,29 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     }
   };
 
-  const handleAddClicked = () => {};
+  let item: Item = {
+    name: "peanuts15",
+    quantity: 3,
+    cost: 53,
+    usersBringing: ["Connor", "Shashank"],
+    usersExempted: ["Bob"],
+    required: false,
+    groupId: "65c6eca75d4500fc9a23c6de",
+  };
 
-  // let item: Item = {
-  //   name: "peanuts15",
-  //   quantity: 3,
-  //   cost: 7.5,
-  //   usersBringing: ["Connor", "Shashank"],
-  //   usersExempted: ["Bob"],
-  //   required: false,
-  //   groupId: "65bc486442a9af7a3e70a51e",
-  // };
+  const handleAddClicked = () => {
+    const room = "65c6eca75d4500fc9a23c6de";
+    console.log("room", room);
+    socket.emit("send_item", { item, room });
+
+    console.log(groupDetails);
+  };
 
   const handleEdit = () => {
     setEditItem(true);
     setItemDetails({
       name: "peanuts1ww5",
-      quantity: 3,
+      quantity: 1,
       cost: 7.5,
       usersBringing: "Connor, Shashank",
       usersExempted: "Bob",
@@ -163,7 +179,7 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
             {BASE_URL_CLIENT + location.pathname}
           </div>
         </div>
-        <GroupHeader data={groupDetails} />
+        <GroupHeader data={groupDetails} budgetUsed={budgetUsed} />
 
         <div className="w-[80%]">
           <OnlineUsers roomUsers={roomUsers} />
