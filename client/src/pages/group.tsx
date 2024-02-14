@@ -14,6 +14,7 @@ import { ServerToClientEvents, ClientToServerEvents } from "../../../typings";
 
 import { Item, User } from "../../../typings";
 import { EditableItem } from "../components/editableItem";
+import { Loading } from "../components/loading";
 
 interface GPROPS {
   socket: io.Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -165,7 +166,7 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <Loading />;
   }
   return (
     <div className="h-screen">
