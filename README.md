@@ -2,6 +2,16 @@
 
 #### A simple group packing app
 
+### Overview:
+
+Packster is a group packing application that allows for real time collaborative packing lists to help you better manage your trips. It has several features mentioned below <br/>
+
+- Ability to create / edit items in real time
+- Allows users to select items they plan to bring
+- Keeps record of total cost of items
+- Allows users to view amount owed to each individual (W.I.P)
+- Shareable link to dive right in + participants do not need to make an account <br/>
+
 TODO:
 
 - [x] Decide between mongoose or mongodb driver (mongoose since most data will be structured, but mongodb driver could also work as long as some sort of schema is eforced)
@@ -13,10 +23,10 @@ TODO:
 - [x] Implement join room event for a ids
 - [x] Implement item fetching for unique room
 - [x] Implement add item (backend)
-- [ ] Implement add item (frontend)
-- [ ] Create "editable" item
+- [x] Implement add item (frontend)
+- [x] Create "editable" item
 - [ ] Configure "editable" item
-- [ ] Set up budget feature
+- [x] Set up budget feature
 - [x] Decide how to handle client users (See below for details, going with C with the addition noted for now)
 - [ ] Set up user table / validation
 - [ ] Implement create user action
