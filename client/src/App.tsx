@@ -9,6 +9,8 @@ import { Report } from "./pages/report";
 import { Test } from "./pages/test";
 import * as io from "socket.io-client";
 import { ServerToClientEvents, ClientToServerEvents } from "../../typings";
+import { useEffect } from "react";
+import { GoogleLogin } from "@react-oauth/google";
 
 const socket: io.Socket<ServerToClientEvents, ClientToServerEvents> =
   io.connect("http://localhost:7000");
@@ -17,8 +19,22 @@ export const BASE_URL_API = "http://localhost:7000";
 export const BASE_URL_CLIENT = "http://localhost:3000";
 
 export const App = () => {
+  function handleCallbackResponse(response: any) {
+    console.log("Encoded JWT ID token");
+  }
+
+  useEffect(() => {}, []);
   return (
     <>
+      <GoogleLogin
+        onSuccess={(credentialResponse) => {
+          console.log(credentialResponse);
+        }}
+        onError={() => {
+          console.log("Login Failed");
+        }}
+      />
+      ;
       <NavBar />
       <BrowserRouter>
         <Routes>

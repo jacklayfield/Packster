@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@monaco-editor/react": "^4.5.1",
+    "@react-oauth/google": "^0.12.1",
     "@syncedstore/react": "^0.5.2",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
@@ -60,6 +61,7 @@
     ]
   },
   "devDependencies": {
+    "@types/google.maps": "^3.55.3",
     "@types/quill": "^2.0.10",
     "@types/react-datepicker": "^4.19.5",
     "autoprefixer": "^10.4.14",
