@@ -1,4 +1,6 @@
 import backpack from "../images/backpack.png";
+import { GoogleLogin } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
 export const NavBar = () => {
   return (
     <>
@@ -7,7 +9,17 @@ export const NavBar = () => {
         <span className="text-4xl font-bold font-mono">Packster</span>
       </div>
       <div className="flex top-8 text-lg font-medium right-8 position-absolute">
-        Create Account
+        <GoogleLogin
+          onSuccess={(credentialResponse) => {
+            const credentialResponseDecoded = jwtDecode(
+              credentialResponse.credential ? credentialResponse.credential : ""
+            );
+            console.log(credentialResponseDecoded);
+          }}
+          onError={() => {
+            console.log("Login Failed");
+          }}
+        />
       </div>
     </>
   );
