@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Col from "react-bootstrap/esm/Col";
 import Row from "react-bootstrap/esm/Row";
 import { GroupHeader } from "../components/groupHeader";
@@ -23,6 +23,8 @@ interface GPROPS {
 export const Group: React.FC<GPROPS> = ({ socket }) => {
   const location = useLocation();
   const grpId = location.pathname.split("/")[2];
+
+  const navigate = useNavigate();
 
   const [itemDetails, setItemDetails] = useState({
     name: "",
@@ -172,13 +174,33 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     <div className="h-screen">
       {modalOpen && <Modal applyModal={applyModal} />}
       <div className="flex flex-col items-center pt-24 min-h-full m bg-gray-200">
-        <div className="flex flex-row">
-          <div className="p-2 rounded-tl-lg rounded-bl-lg bg-violet-400 text-black text-xl">
-            Your Shareable Link:{" "}
-          </div>
-          <div className="p-2 rounded-tr-lg rounded-br-lg bg-violet-800 text-white font-semibold text-xl">
-            {BASE_URL_CLIENT + location.pathname}
-          </div>
+        <div className="w-75 mt-3 ">
+          <Row className="flex items-center">
+            <Col>
+              <button className="bg-gray-800 hover:bg-gray-800 text-white text-sm font-bold py-1 px-2 ml-4 rounded">
+                <i className="fa-solid fa-gear"></i> Admin
+              </button>
+            </Col>
+            <Col xs={6}>
+              <div className="flex flex-row">
+                <div className="p-2 rounded-tl-lg rounded-bl-lg bg-violet-400 text-black text-xl">
+                  Your Shareable Link:{" "}
+                </div>
+                <div className="p-2 rounded-tr-lg rounded-br-lg bg-violet-800 text-white font-semibold text-xl">
+                  {BASE_URL_CLIENT + location.pathname}
+                </div>
+                <div></div>
+              </div>
+            </Col>
+            <Col>
+              <button
+                onClick={() => navigate("/report/" + grpId)}
+                className="float-right bg-gray-800 hover:bg-gray-800 text-white text-sm font-bold py-1 px-2 mr-4 rounded"
+              >
+                <i className="fa-solid fa-file"></i> View Report
+              </button>
+            </Col>
+          </Row>
         </div>
         <GroupHeader data={groupDetails} budgetUsed={budgetUsed} />
 
