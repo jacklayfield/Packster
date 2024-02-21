@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import Col from "react-bootstrap/esm/Col";
 import Row from "react-bootstrap/esm/Row";
 import { GroupHeader } from "../components/groupHeader";
@@ -7,13 +7,11 @@ import { List } from "../components/list";
 import { OnlineUsers } from "../components/onlineUsers";
 import axios from "axios";
 import { BASE_URL_API } from "../App";
-import { BASE_URL_CLIENT } from "../App";
 import { Modal } from "../components/modal";
 import * as io from "socket.io-client";
 import { ServerToClientEvents, ClientToServerEvents } from "../../../typings";
 
 import { Item, User } from "../../../typings";
-import { EditableItem } from "../components/editableItem";
 import { Loading } from "../components/loading";
 
 interface GPROPS {
@@ -24,29 +22,27 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   const location = useLocation();
   const grpId = location.pathname.split("/")[2];
 
-  const navigate = useNavigate();
-
-  const [itemDetails, setItemDetails] = useState({
-    name: "",
-    quantity: 0,
-    cost: 0,
-    usersBringing: "",
-    usersExempted: "",
-    required: "No",
-  });
+  // const [itemDetails, setItemDetails] = useState({
+  //   name: "",
+  //   quantity: 0,
+  //   cost: 0,
+  //   usersBringing: "",
+  //   usersExempted: "",
+  //   required: "No",
+  // });
 
   const [listItems, setListItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState<Boolean>(false);
   const [modalOpen, setModalOpen] = useState<Boolean>(true);
   const [username, setUsername] = useState<string>("n/a");
   const [roomUsers, setRoomUsers] = useState<User[]>([]);
-  const [editItem, setEditItem] = useState<Boolean>(false);
   const [budgetUsed, setBudgetUsed] = useState<number>(0);
 
   const [groupDetails, setGroupDetails] = useState({
     name: "",
     date: "",
     budget: 0,
+    grpId: "",
   });
 
   useEffect(() => {
@@ -54,6 +50,7 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
       setLoading(true);
       try {
         const res = await axios.get(BASE_URL_API + "/group/id=" + grpId);
+        res.data.grpId = grpId;
         setGroupDetails(res.data);
       } catch (error) {
         console.log(error);
@@ -66,10 +63,7 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   useEffect(() => {
     socket.on("receive_items", (data) => {
       console.log("receive_items");
-      // console.log(
-      //   "res:",
-      //   data.items.reduce((sum, obj) => sum + obj.cost * obj.quantity, 0)
-      // );
+
       console.log(data);
       setListItems(data.items);
       setBudgetUsed(
@@ -155,18 +149,6 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     console.log(groupDetails);
   };
 
-  const handleEdit = () => {
-    setEditItem(true);
-    setItemDetails({
-      name: "peanuts1ww5",
-      quantity: 1,
-      cost: 7.5,
-      usersBringing: "Connor, Shashank",
-      usersExempted: "Bob",
-      required: "No",
-    });
-  };
-
   if (loading) {
     return <Loading />;
   }
@@ -174,34 +156,7 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     <div className="h-screen">
       {modalOpen && <Modal applyModal={applyModal} />}
       <div className="flex flex-col items-center pt-24 min-h-full m bg-gray-200">
-        <div className="w-75 mt-3 ">
-          <Row className="flex items-center">
-            <Col>
-              <button className="bg-gray-800 hover:bg-gray-800 text-white text-sm font-bold py-1 px-2 ml-4 rounded">
-                <i className="fa-solid fa-gear"></i> Admin
-              </button>
-            </Col>
-            <Col xs={6}>
-              <div className="flex flex-row">
-                <div className="p-2 rounded-tl-lg rounded-bl-lg bg-violet-400 text-black text-xl">
-                  Your Shareable Link:{" "}
-                </div>
-                <div className="p-2 rounded-tr-lg rounded-br-lg bg-violet-800 text-white font-semibold text-xl">
-                  {BASE_URL_CLIENT + location.pathname}
-                </div>
-                <div></div>
-              </div>
-            </Col>
-            <Col>
-              <button
-                onClick={() => navigate("/report/" + grpId)}
-                className="float-right bg-gray-800 hover:bg-gray-800 text-white text-sm font-bold py-1 px-2 mr-4 rounded"
-              >
-                <i className="fa-solid fa-file"></i> View Report
-              </button>
-            </Col>
-          </Row>
-        </div>
+        <div className="w-75 mt-3 "></div>
         <GroupHeader data={groupDetails} budgetUsed={budgetUsed} />
 
         <div className="w-[80%]">
@@ -224,12 +179,6 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
           >
             <span className="fa-solid fa-circle-plus fa-xl"></span> Add an item
           </div>
-
-          {/* {editItem && (
-            <EditableItem item={itemDetails} setItem={setItemDetails} />
-          )} */}
-
-          <button onClick={handleEdit}>Edit</button>
 
           <List items={listItems} />
         </div>
