@@ -138,11 +138,11 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     usersBringing: ["Connor", "Shashank"],
     usersExempted: ["Bob"],
     required: false,
-    groupId: "65c6eca75d4500fc9a23c6de",
+    groupId: "65d694cac5f2ff29a37182a5",
   };
 
   const handleAddClicked = () => {
-    const room = "65c6eca75d4500fc9a23c6de";
+    const room = "65d694cac5f2ff29a37182a5";
     console.log("room", room);
     socket.emit("send_item", { item, room });
 
@@ -162,7 +162,7 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
         <div className="w-[80%]">
           <OnlineUsers roomUsers={roomUsers} />
 
-          <div className=" bg-gray-200 rounded-md pl-3 pr-3 pt-6 pb-6 text-center text-xl mt-30 font-bold">
+          <div className=" bg-gray-200 rounded-md pl-3 pr-3 pt-3 pb-3 text-center text-xl mt-30 font-bold">
             <Row>
               <Col>Name</Col>
               <Col>Quantity</Col>

@@ -14,7 +14,7 @@ export const GroupHeader: React.FC<LHPROPS> = ({ data, budgetUsed }) => {
   const navigate = useNavigate();
 
   return (
-    <div className="w-75 mt-3 ">
+    <div className="w-75">
       <Row className="flex items-center">
         <Col></Col>
         <Col xs={6} className="flex flex-col items-center">
@@ -43,9 +43,9 @@ export const GroupHeader: React.FC<LHPROPS> = ({ data, budgetUsed }) => {
           </div>
         </Col>
       </Row>
-      <Row className="flex items-center mt-2">
+      <Row className="flex items-center mt-3">
         <Col>
-          <div className="bg-blue-200 rounded-md px-6 py-6 text-center text-3xl font-bold mt-30">
+          <div className="bg-blue-200 rounded-md px-3 py-3 text-center text-2xl font-bold mt-30">
             {date.toLocaleDateString("en-us", {
               year: "numeric",
               month: "short",
@@ -55,7 +55,7 @@ export const GroupHeader: React.FC<LHPROPS> = ({ data, budgetUsed }) => {
         </Col>
         <Col xs={6}>
           {" "}
-          <div className="bg-white rounded-md px-9 py-9 text-center text-4xl font-bold mt-30">
+          <div className="bg-white rounded-md px-4 py-4 text-center text-4xl font-bold mt-30">
             {data.name}
           </div>{" "}
         </Col>

@@ -25,7 +25,8 @@ export const ProgressBar: React.FC<PPROPS> = ({
     height: "100%",
     width: `${percentage * 100}%`,
     backgroundColor: bgcolor,
-    borderRadius: "inherit",
+    borderTopLeftRadius: "6px",
+    borderBottomLeftRadius: "6px",
     textAlign: "right" as const,
     position: "absolute",
     top: 0,
@@ -34,7 +35,7 @@ export const ProgressBar: React.FC<PPROPS> = ({
   } as React.CSSProperties;
 
   return (
-    <div className="bg-white rounded-md text-center text-3xl px-6 py-6 font-bold mt-30 relative z-1">
+    <div className="bg-white rounded-md text-center text-2xl px-3 py-3 font-bold mt-30 relative z-1">
       <span>{`$${completed} / $${total}`}</span>
       <div style={fillerStyles}></div>
     </div>

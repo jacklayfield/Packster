@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState, MouseEvent } from "react";
 import { Item } from "../../../typings";
 import { ListItem } from "./listItem";
 import { EditableItem } from "./editableItem";
@@ -18,19 +18,43 @@ export const List: React.FC<LPROPS> = ({ items }) => {
     groupId: "",
   });
 
-  const handleDivClick = (index: number, item: Item) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleDivClick = (
+    index: number,
+    item: Item,
+    e: React.MouseEvent<HTMLDivElement>
+  ) => {
+    e.stopPropagation();
     setItemData(item);
     setSelectedIdx(index);
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event: any) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setSelectedIdx(-1);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, []);
+
   return (
-    <>
+    <div ref={containerRef}>
       {items.map((item, i) => {
         return (
           <div
             className="mt-2"
             key={"item" + i}
-            onClick={() => handleDivClick(i, item)}
+            onClick={(e) => handleDivClick(i, item, e)}
           >
             {selectedIdx === i ? (
               <EditableItem item={itemData} setItem={setItemData} />
@@ -43,6 +67,6 @@ export const List: React.FC<LPROPS> = ({ items }) => {
           </div>
         );
       })}
-    </>
+    </div>
   );
 };

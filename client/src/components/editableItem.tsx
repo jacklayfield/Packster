@@ -23,7 +23,7 @@ export const EditableItem: React.FC<LPROPS> = ({ item, setItem }) => {
         <Col>
           {" "}
           <input
-            className="bg-indigo-200 bg-opacity-50 w-full m-0 p-2 bg-gray-200 drop-shadow-lg text-lg text-center focus:shadow focus:outline-none"
+            className="bg-indigo-200 bg-opacity-50 w-full m-0 p-2  drop-shadow-lg text-lg text-center focus:shadow focus:outline-none"
             type="text"
             name="name"
             value={item.name}
@@ -32,7 +32,7 @@ export const EditableItem: React.FC<LPROPS> = ({ item, setItem }) => {
         </Col>
         <Col>
           <input
-            className="bg-indigo-200 bg-opacity-50 w-full m-0 p-2 bg-gray-200 drop-shadow-lg text-lg text-center focus:shadow focus:outline-none"
+            className="bg-indigo-200 bg-opacity-50 w-full m-0 p-2  drop-shadow-lg text-lg text-center focus:shadow focus:outline-none"
             type="text"
             name="quantity"
             value={item.quantity}
@@ -41,7 +41,7 @@ export const EditableItem: React.FC<LPROPS> = ({ item, setItem }) => {
         </Col>
         <Col>
           <input
-            className="bg-indigo-200 bg-opacity-50 w-full m-0 p-2 bg-gray-200 drop-shadow-lg text-lg text-center focus:shadow focus:outline-none"
+            className="bg-indigo-200 bg-opacity-50 w-full m-0 p-2 drop-shadow-lg text-lg text-center focus:shadow focus:outline-none"
             type="text"
             name="cost"
             value={item.cost}
@@ -50,7 +50,7 @@ export const EditableItem: React.FC<LPROPS> = ({ item, setItem }) => {
         </Col>
         <Col>
           <input
-            className="bg-indigo-200 bg-opacity-50 w-full m-0 p-2 bg-gray-200 drop-shadow-lg text-lg text-center focus:shadow focus:outline-none"
+            className="bg-indigo-200 bg-opacity-50 w-full m-0 p-2  drop-shadow-lg text-lg text-center focus:shadow focus:outline-none"
             type="text"
             name="required"
             value={item.required ? "Yes" : "No"}
@@ -59,7 +59,7 @@ export const EditableItem: React.FC<LPROPS> = ({ item, setItem }) => {
         </Col>
         <Col>
           <input
-            className="bg-indigo-200 bg-opacity-50 w-full m-0 p-2 bg-gray-200 drop-shadow-lg text-lg text-center focus:shadow focus:outline-none"
+            className="bg-indigo-200 bg-opacity-50 w-full m-0 p-2  drop-shadow-lg text-lg text-center focus:shadow focus:outline-none"
             type="text"
             name="usersBringing"
             value={item.usersBringing}
@@ -67,16 +67,16 @@ export const EditableItem: React.FC<LPROPS> = ({ item, setItem }) => {
         </Col>
         <Col>
           <input
-            className="bg-indigo-200 bg-opacity-50 w-full m-0 p-2 bg-gray-200 drop-shadow-lg text-lg text-center focus:shadow focus:outline-none"
+            className="bg-indigo-200 bg-opacity-50 w-full m-0 p-2  drop-shadow-lg text-lg text-center focus:shadow focus:outline-none"
             type="text"
             name="usersExempted"
             value={item.usersExempted}
             onChange={handleChange}
           ></input>{" "}
         </Col>
-        <Col>
-          <button className="bg-purple-200 w-full p-2 bg-gray-200 drop-shadow-lg text-lg text-center rounded-3xl focus:shadow focus:outline-none">
-            Claim
+        <Col className="flex flex-row align-middle justify-center">
+          <button className=" bg-red-300 w-half px-3 drop-shadow-lg text-sm text-center rounded-lg">
+            <i className="fa-solid fa-trash-can"></i> Remove
           </button>{" "}
         </Col>
       </Row>
