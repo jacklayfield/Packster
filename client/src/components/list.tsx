@@ -40,7 +40,7 @@ export const List: React.FC<LPROPS> = ({
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const clientId = socket.id || "q";
+  const clientId = socket.id || "invalid_id";
 
   useEffect(() => {
     socket.on("receive_item", (data) => {
@@ -56,6 +56,12 @@ export const List: React.FC<LPROPS> = ({
 
       setListItems((prevItems: Item[]) => {
         const updatedList = [...prevItems, newItem];
+
+        if (data.clientId === "invalid_id") {
+          console.error(
+            "Fatal error: Socket is corrupted and provided an invalid id"
+          );
+        }
 
         if (clientId === data.clientId) {
           setItemData(item);

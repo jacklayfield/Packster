@@ -22,15 +22,6 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   const location = useLocation();
   const grpId: string = location.pathname.split("/")[2];
 
-  // const [itemDetails, setItemDetails] = useState({
-  //   name: "",
-  //   quantity: 0,
-  //   cost: 0,
-  //   usersBringing: "",
-  //   usersExempted: "",
-  //   required: "No",
-  // });
-
   const [loading, setLoading] = useState<Boolean>(false);
   const [modalOpen, setModalOpen] = useState<Boolean>(true);
   const [username, setUsername] = useState<string>("n/a");
