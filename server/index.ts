@@ -112,7 +112,7 @@ io.on(
       //Get items for specific room and emit them to all users
       mongoGetItems(grpRoom)
         .then((items) => {
-          console.log(items);
+          console.log("rec_items");
           socket.emit("receive_items", { items });
         })
         .catch((error) => {
@@ -122,10 +122,10 @@ io.on(
 
     // ---------- SEND ITEM EVENT ----------
     socket.on("send_item", (data) => {
-      const { item, room } = data;
+      const { item, room, clientId } = data;
       grpRoom = room;
       // Send to all users in room, including sender
-      io.in(grpRoom).emit("receive_item", { item });
+      io.in(grpRoom).emit("receive_item", { item, clientId });
       // Save to DB
       mongoSaveItem(item, room)
         .then((response) => console.log(response))

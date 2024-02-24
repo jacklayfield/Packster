@@ -7,6 +7,16 @@ export const mongoSaveItem = async (item: Item, room: string) => {
   try {
     if (itemModel.validate(item).error) {
       console.error(`Validation failed for item: ${item}`);
+      console.log(
+        "item types:",
+        typeof item.name,
+        typeof item.quantity,
+        typeof item.cost,
+        typeof item.usersBringing,
+        typeof item.usersExempted,
+        typeof item.required,
+        typeof item.groupId
+      );
       return;
     }
 

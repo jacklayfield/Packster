@@ -20,7 +20,7 @@ interface GPROPS {
 
 export const Group: React.FC<GPROPS> = ({ socket }) => {
   const location = useLocation();
-  const grpId = location.pathname.split("/")[2];
+  const grpId: string = location.pathname.split("/")[2];
 
   // const [itemDetails, setItemDetails] = useState({
   //   name: "",
@@ -31,12 +31,12 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
   //   required: "No",
   // });
 
-  const [listItems, setListItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState<Boolean>(false);
   const [modalOpen, setModalOpen] = useState<Boolean>(true);
   const [username, setUsername] = useState<string>("n/a");
   const [roomUsers, setRoomUsers] = useState<User[]>([]);
   const [budgetUsed, setBudgetUsed] = useState<number>(0);
+  const [listItems, setListItems] = useState<Item[]>([]);
 
   const [groupDetails, setGroupDetails] = useState({
     name: "",
@@ -62,13 +62,8 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
 
   useEffect(() => {
     socket.on("receive_items", (data) => {
-      console.log("receive_items");
-
       console.log(data);
       setListItems(data.items);
-      setBudgetUsed(
-        data.items.reduce((sum, obj) => sum + obj.cost * obj.quantity, 0)
-      );
     });
 
     // Remove event listener on component unmount
@@ -89,33 +84,6 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     };
   }, [socket]);
 
-  useEffect(() => {
-    socket.on("receive_item", (data) => {
-      console.log("recEIVE");
-      console.log(data);
-      setListItems((state) => [
-        ...state,
-        {
-          name: data.item.name,
-          quantity: data.item.quantity,
-          cost: data.item.cost,
-          usersBringing: data.item.usersBringing,
-          usersExempted: data.item.usersExempted,
-          required: data.item.required,
-          groupId: data.item.groupId,
-        },
-      ]);
-      setBudgetUsed(
-        (prevState) => prevState + data.item.quantity * data.item.cost
-      );
-    });
-
-    // Remove event listener on component unmount
-    return () => {
-      socket.off("receive_item");
-    };
-  }, [socket]);
-
   const applyModal = (name: string) => {
     setUsername(name);
     setModalOpen(!modalOpen);
@@ -131,31 +99,13 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
     }
   };
 
-  let item: Item = {
-    name: "peanuts15",
-    quantity: 3,
-    cost: 53,
-    usersBringing: ["Connor", "Shashank"],
-    usersExempted: ["Bob"],
-    required: false,
-    groupId: "65d694cac5f2ff29a37182a5",
-  };
-
-  const handleAddClicked = () => {
-    const room = "65d694cac5f2ff29a37182a5";
-    console.log("room", room);
-    socket.emit("send_item", { item, room });
-
-    console.log(groupDetails);
-  };
-
   if (loading) {
     return <Loading />;
   }
   return (
     <div className="h-screen">
       {modalOpen && <Modal applyModal={applyModal} />}
-      <div className="flex flex-col items-center pt-24 min-h-full m bg-gray-200">
+      <div className="pb-8 flex flex-col items-center pt-24 min-h-full m bg-gray-200">
         <div className="w-75 mt-3 "></div>
         <GroupHeader data={groupDetails} budgetUsed={budgetUsed} />
 
@@ -173,14 +123,13 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
               <Col>Click to claim</Col>
             </Row>
           </div>
-          <div
-            className="mt-2 mb-2 text-gray-600 hover:text-gray-900 hover:border-gray-900 hover:bg-gray-300 hover:cursor-pointer border-3 border-dotted border-gray-600 rounded-md px-3 py-3 text-center text-lg"
-            onClick={handleAddClicked}
-          >
-            <span className="fa-solid fa-circle-plus fa-xl"></span> Add an item
-          </div>
 
-          <List items={listItems} />
+          <List
+            grpId={grpId}
+            socket={socket}
+            listItems={listItems}
+            setListItems={setListItems}
+          />
         </div>
       </div>
     </div>
