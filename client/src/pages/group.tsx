@@ -53,7 +53,6 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
 
   useEffect(() => {
     socket.on("receive_items", (data) => {
-      console.log(data);
       setListItems(data.items);
     });
 
@@ -65,7 +64,6 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
 
   useEffect(() => {
     socket.on("room_users", (data) => {
-      console.log(data.users);
       setRoomUsers(data.users);
     });
 
@@ -98,7 +96,13 @@ export const Group: React.FC<GPROPS> = ({ socket }) => {
       {modalOpen && <Modal applyModal={applyModal} />}
       <div className="pb-8 flex flex-col items-center pt-24 min-h-full m bg-gray-200">
         <div className="w-75 mt-3 "></div>
-        <GroupHeader data={groupDetails} budgetUsed={budgetUsed} />
+        <GroupHeader
+          data={groupDetails}
+          budgetUsed={listItems.reduce(
+            (sum, obj) => sum + obj.cost * obj.quantity,
+            0
+          )}
+        />
 
         <div className="w-[80%]">
           <OnlineUsers roomUsers={roomUsers} />

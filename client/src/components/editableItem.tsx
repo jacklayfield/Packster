@@ -75,8 +75,11 @@ export const EditableItem: React.FC<LPROPS> = ({ item, setItem }) => {
           ></input>{" "}
         </Col>
         <Col className="flex flex-row align-middle justify-center">
+          <button className=" bg-green-200 w-half px-3 drop-shadow-lg text-sm text-center rounded-lg mr-3">
+            <i className="fa-solid fa-check"></i>
+          </button>{" "}
           <button className=" bg-red-300 w-half px-3 drop-shadow-lg text-sm text-center rounded-lg">
-            <i className="fa-solid fa-trash-can"></i> Remove
+            <i className="fa-solid fa-trash-can"></i>
           </button>{" "}
         </Col>
       </Row>

@@ -6,7 +6,7 @@ interface OPROPS {
 
 export const OnlineUsers: React.FC<OPROPS> = ({ roomUsers }) => {
   return (
-    <div className="flex flex-row mt-2 justify-center">
+    <div className="flex flex-row mt-2 justify-center flex-wrap ">
       <div className="mt-auto mb-auto mr-1 font-semibold text-lg">Online </div>
       {roomUsers.map((user, i) => (
         <div key={i}>

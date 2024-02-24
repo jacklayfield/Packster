@@ -80,8 +80,8 @@ export const List: React.FC<LPROPS> = ({
 
   let item: Item = {
     name: "New Item",
-    quantity: 0,
-    cost: 0,
+    quantity: 1,
+    cost: 5,
     usersBringing: [],
     usersExempted: [],
     required: false,
