@@ -7,9 +7,20 @@ import { Item } from "../../../typings";
 interface LPROPS {
   item: Item;
   setItem: Function;
+  showConfModal: Function;
 }
 
-export const EditableItem: React.FC<LPROPS> = ({ item, setItem }) => {
+export const EditableItem: React.FC<LPROPS> = ({
+  item,
+  setItem,
+  showConfModal,
+}) => {
+  const deleteConfTitle: String = "Delete Item";
+  const deleteConfMessage: String =
+    "Are you sure you want to delete this item?";
+  const yesBtn: String = "Delete";
+  const noBtn: String = "Cancel";
+
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setItem((prev: Item) => ({
       ...prev,
@@ -76,10 +87,15 @@ export const EditableItem: React.FC<LPROPS> = ({ item, setItem }) => {
         </Col>
         <Col className="flex flex-row align-middle justify-center">
           <button className=" bg-green-200 w-half px-3 drop-shadow-lg text-sm text-center rounded-lg mr-3">
-            <i className="fa-solid fa-check"></i>
+            <i className="fa-solid fa-check"></i> Save
           </button>{" "}
-          <button className=" bg-red-300 w-half px-3 drop-shadow-lg text-sm text-center rounded-lg">
-            <i className="fa-solid fa-trash-can"></i>
+          <button
+            onClick={() =>
+              showConfModal(deleteConfMessage, deleteConfTitle, yesBtn, noBtn)
+            }
+            className=" bg-red-300 w-half px-3 drop-shadow-lg text-sm text-center rounded-lg"
+          >
+            <i className="fa-solid fa-trash-can"></i> Delete
           </button>{" "}
         </Col>
       </Row>

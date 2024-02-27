@@ -12,6 +12,7 @@ import {
 } from "../../../typings";
 import { ListItem } from "./listItem";
 import { EditableItem } from "./editableItem";
+import { Confirmation } from "./confirmation";
 import * as io from "socket.io-client";
 
 interface LPROPS {
@@ -27,6 +28,13 @@ export const List: React.FC<LPROPS> = ({
   listItems,
   setListItems,
 }) => {
+  const [message, setMessage] = useState<String>("");
+  const [title, setTitle] = useState<String>("");
+  const [applyFunc, setApplyFunc] = useState<Function>(() => {});
+  const [yesBtn, setYesBtn] = useState<String>();
+  const [noBtn, setNoBtn] = useState<String>();
+  const [displayConfirmationModal, setDisplayConfirmationModal] =
+    useState<boolean>(false);
   const [selectedIdx, setSelectedIdx] = useState<number>();
   const [itemData, setItemData] = useState<Item>({
     name: "",
@@ -81,7 +89,7 @@ export const List: React.FC<LPROPS> = ({
   let item: Item = {
     name: "New Item",
     quantity: 1,
-    cost: 5,
+    cost: 800,
     usersBringing: [],
     usersExempted: [],
     required: false,
@@ -103,6 +111,26 @@ export const List: React.FC<LPROPS> = ({
     setSelectedIdx(index);
   };
 
+  const submitDelete = () => {
+    // Remove item logic
+  };
+
+  const showConfModal = (
+    msg: String,
+    title?: String,
+    yesBtn?: String,
+    noBtn?: String
+  ) => {
+    setMessage(msg);
+
+    title && setTitle(title);
+    yesBtn && setYesBtn(yesBtn);
+    noBtn && setNoBtn(noBtn);
+    title === "Delete Item" && setApplyFunc(submitDelete);
+
+    setDisplayConfirmationModal(true);
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: any) => {
       if (
@@ -122,7 +150,15 @@ export const List: React.FC<LPROPS> = ({
 
   return (
     <>
-      {" "}
+      <Confirmation
+        showModal={displayConfirmationModal}
+        confirmModal={applyFunc}
+        hideModal={() => setDisplayConfirmationModal(false)}
+        message={message}
+        title={title}
+        yesButton={yesBtn}
+        noButton={noBtn}
+      />{" "}
       <div
         className="mt-2 mb-2 text-gray-600 hover:text-gray-900 hover:border-gray-900 hover:bg-gray-300 hover:cursor-pointer border-3 border-dotted border-gray-600 rounded-md px-3 py-3 text-center text-lg"
         onClick={handleAddClicked}
@@ -138,7 +174,11 @@ export const List: React.FC<LPROPS> = ({
               onClick={(e) => handleDivClick(i, item, e)}
             >
               {selectedIdx === i ? (
-                <EditableItem item={itemData} setItem={setItemData} />
+                <EditableItem
+                  item={itemData}
+                  setItem={setItemData}
+                  showConfModal={showConfModal}
+                />
               ) : (
                 <ListItem
                   item={item}
