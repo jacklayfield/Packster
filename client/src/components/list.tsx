@@ -22,19 +22,19 @@ interface LPROPS {
   setListItems: React.Dispatch<React.SetStateAction<Item[]>>;
 }
 
+const deleteConfTitle: string = "Delete Item";
+const deleteConfMessage: string = "Are you sure you want to delete this item?";
+const saveConfTitle: string = "Save Item";
+const saveConfMessage: string = "Do you want to save the edited item?";
+
 export const List: React.FC<LPROPS> = ({
   grpId,
   socket,
   listItems,
   setListItems,
 }) => {
-  const [message, setMessage] = useState<String>("");
-  const [title, setTitle] = useState<String>("");
-  const [applyFunc, setApplyFunc] = useState<Function>(() => {});
-  const [yesBtn, setYesBtn] = useState<String>();
-  const [noBtn, setNoBtn] = useState<String>();
-  const [displayConfirmationModal, setDisplayConfirmationModal] =
-    useState<boolean>(false);
+  const [displayDeleteModal, setDisplayDeleteModal] = useState<boolean>(false);
+  const [displaySaveModal, setDisplaySaveModal] = useState<boolean>(false);
   const [selectedIdx, setSelectedIdx] = useState<number>();
   const [itemData, setItemData] = useState<Item>({
     name: "",
@@ -115,22 +115,6 @@ export const List: React.FC<LPROPS> = ({
     // Remove item logic
   };
 
-  const showConfModal = (
-    msg: String,
-    title?: String,
-    yesBtn?: String,
-    noBtn?: String
-  ) => {
-    setMessage(msg);
-
-    title && setTitle(title);
-    yesBtn && setYesBtn(yesBtn);
-    noBtn && setNoBtn(noBtn);
-    title === "Delete Item" && setApplyFunc(submitDelete);
-
-    setDisplayConfirmationModal(true);
-  };
-
   useEffect(() => {
     const handleClickOutside = (event: any) => {
       if (
@@ -151,13 +135,26 @@ export const List: React.FC<LPROPS> = ({
   return (
     <>
       <Confirmation
-        showModal={displayConfirmationModal}
-        confirmModal={applyFunc}
-        hideModal={() => setDisplayConfirmationModal(false)}
-        message={message}
-        title={title}
-        yesButton={yesBtn}
-        noButton={noBtn}
+        id={"saveModal"}
+        showModal={displaySaveModal}
+        confirmModal={() => {}}
+        hideModal={() => setDisplaySaveModal(false)}
+        message={saveConfMessage}
+        title={saveConfTitle}
+        yesButton={"Save"}
+        noButton={"Discard"}
+        accentColor={"#86EFAC"}
+      />{" "}
+      <Confirmation
+        id={"deleteModal"}
+        showModal={displayDeleteModal}
+        confirmModal={() => {}}
+        hideModal={() => setDisplayDeleteModal(false)}
+        message={deleteConfMessage}
+        title={deleteConfTitle}
+        yesButton={"Delete"}
+        noButton={"Cancel"}
+        accentColor={"#F87171"}
       />{" "}
       <div
         className="mt-2 mb-2 text-gray-600 hover:text-gray-900 hover:border-gray-900 hover:bg-gray-300 hover:cursor-pointer border-3 border-dotted border-gray-600 rounded-md px-3 py-3 text-center text-lg"
@@ -177,7 +174,7 @@ export const List: React.FC<LPROPS> = ({
                 <EditableItem
                   item={itemData}
                   setItem={setItemData}
-                  showConfModal={showConfModal}
+                  setDisplayDeleteModal={setDisplayDeleteModal}
                 />
               ) : (
                 <ListItem
