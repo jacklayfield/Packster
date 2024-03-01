@@ -9,7 +9,7 @@ import http from "http";
 import { Server, Socket } from "socket.io";
 import { connectToDatabase } from "./db/conn";
 // import { instrument } from "@socket.io/admin-ui";
-import { ClientToServerEvents, ServerToClientEvents } from "../typings";
+import { ClientToServerEvents, Item, ServerToClientEvents } from "../typings";
 import { mongoGetItems } from "./services/mongo-get-items";
 import { mongoSaveItem } from "./services/mongo-save-item";
 
@@ -122,13 +122,26 @@ io.on(
 
     // ---------- SEND ITEM EVENT ----------
     socket.on("send_item", (data) => {
-      const { item, room, clientId } = data;
+      const { newItem, room, clientId } = data;
       grpRoom = room;
       // Send to all users in room, including sender
-      io.in(grpRoom).emit("receive_item", { item, clientId });
+
       // Save to DB
-      mongoSaveItem(item, room)
-        .then((response) => console.log(response))
+      mongoSaveItem(newItem, room)
+        .then((response) => {
+          console.log("insertedItem: ", response);
+          const item: Item = {
+            id: response.insertedId.toString(),
+            name: newItem.name,
+            quantity: newItem.quantity,
+            cost: newItem.cost,
+            usersBringing: newItem.usersBringing,
+            usersExempted: newItem.usersExempted,
+            required: newItem.required,
+            groupId: newItem.groupId,
+          };
+          io.in(grpRoom).emit("receive_item", { item, clientId });
+        })
         .catch((err) => console.log(err));
     });
 

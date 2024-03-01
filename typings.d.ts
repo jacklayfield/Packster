@@ -8,11 +8,26 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   clientMsg: (data: { msg: string; room: string }) => void;
   join_room: (data: { name: string; room: string }) => void;
-  send_item: (data: { item: Item; room: string; clientId: string }) => void;
+  send_item: (data: {
+    newItem: NewItem;
+    room: string;
+    clientId: string;
+  }) => void;
   leave_room: (data: { name: string; room: string }) => void;
 }
 
 export type Item = {
+  id: string;
+  name: string;
+  quantity: number;
+  cost: number;
+  usersBringing: string[];
+  usersExempted: string[];
+  required: boolean;
+  groupId: string;
+};
+
+export type NewItem = {
   name: string;
   quantity: number;
   cost: number;

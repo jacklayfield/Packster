@@ -8,6 +8,7 @@ import React, {
 import {
   ClientToServerEvents,
   Item,
+  NewItem,
   ServerToClientEvents,
 } from "../../../typings";
 import { ListItem } from "./listItem";
@@ -37,6 +38,7 @@ export const List: React.FC<LPROPS> = ({
   const [displaySaveModal, setDisplaySaveModal] = useState<boolean>(false);
   const [selectedIdx, setSelectedIdx] = useState<number>();
   const [itemData, setItemData] = useState<Item>({
+    id: "",
     name: "",
     quantity: 0,
     cost: 0,
@@ -53,6 +55,7 @@ export const List: React.FC<LPROPS> = ({
   useEffect(() => {
     socket.on("receive_item", (data) => {
       const newItem: Item = {
+        id: data.item.id,
         name: data.item.name,
         quantity: data.item.quantity,
         cost: data.item.cost,
@@ -72,7 +75,7 @@ export const List: React.FC<LPROPS> = ({
         }
 
         if (clientId === data.clientId) {
-          setItemData(item);
+          //setItemData(item);
           setSelectedIdx(updatedList.length - 1);
         }
 
@@ -86,7 +89,7 @@ export const List: React.FC<LPROPS> = ({
     };
   }, [socket, clientId, setListItems, setItemData, setSelectedIdx]);
 
-  let item: Item = {
+  let newItem: NewItem = {
     name: "New Item",
     quantity: 1,
     cost: 800,
@@ -98,7 +101,7 @@ export const List: React.FC<LPROPS> = ({
 
   const handleAddClicked = () => {
     const room: string = grpId;
-    socket.emit("send_item", { item, room, clientId });
+    socket.emit("send_item", { newItem, room, clientId });
   };
 
   const handleDivClick = (

@@ -1,8 +1,8 @@
-import { Item } from "../../typings";
+import { NewItem } from "../../typings";
 import { collections } from "../db/conn";
 import itemModel from "../models/item";
 
-export const mongoSaveItem = async (item: Item, room: string) => {
+export const mongoSaveItem = async (item: NewItem, room: string) => {
   let results;
   try {
     if (itemModel.validate(item).error) {
