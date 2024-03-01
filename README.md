@@ -29,10 +29,10 @@ TODO:
 - [x] Set up budget feature
 - [x] Decide how to handle client users (See below for details, going with C with the addition noted for now)
 - [x] Delete modal (gui)
-- [ ] Save modal (gui)
+- [x] Save modal (gui)
 - [ ] Delete modal (action)
 - [ ] Save modal (action)
-- [ ] plan out Admin actions
+- [ ] plan out Admin actions (see below)
 - [ ] Set up user table / validation
 - [ ] Implement create user action
 - [ ] Implement user auth (login)
@@ -51,3 +51,10 @@ TODO:
     - Cons: Everyone can edit anything. Malicious intent could destroy someones work.
 
   - Addition to B & C. In these cases, it may be valuable to make account creation mandatory for the user creating a group. They will be granted admin permissions over the group ( ex. can delete anything, ban users, and elevate others permissions (assuming they have an account) ). Anyone can still join and they will be prompted to create an account IF they want to be able to permanently tie their items to their account, otherwise only for the session / local storage saved will they be granted permission over their added items. This will also allow the user who created the group easier management over their group(s).
+
+Admin Actions:
+
+- Delete all items
+- Kick/Ban a user (from ip)
+- Change budget / group name / date
+- Modify reports (maybe)
