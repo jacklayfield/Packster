@@ -4,6 +4,7 @@ import * as dotenv from "dotenv";
 export const collections: {
   group?: mongoDB.Collection;
   item?: mongoDB.Collection;
+  user?: mongoDB.Collection;
 } = {};
 
 export async function connectToDatabase() {
@@ -19,7 +20,9 @@ export async function connectToDatabase() {
 
   const groupCollection: mongoDB.Collection = db.collection("group");
   const itemCollection: mongoDB.Collection = db.collection("item");
+  const userCollection: mongoDB.Collection = db.collection("user");
 
   collections.group = groupCollection;
   collections.item = itemCollection;
+  collections.user = userCollection;
 }

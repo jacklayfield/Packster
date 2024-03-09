@@ -5,6 +5,7 @@ import "./loadEnv";
 import "express-async-errors";
 import group from "./routes/group";
 import item from "./routes/item";
+import user from "./routes/user";
 import http from "http";
 import { Server, Socket } from "socket.io";
 import { connectToDatabase } from "./db/conn";
@@ -36,6 +37,7 @@ app.use(express.json());
 // Load routes
 app.use("/group", group);
 app.use("/item", item);
+app.use("/user", user);
 
 // Global error handling
 app.use((err, _req, res, next) => {
