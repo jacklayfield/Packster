@@ -33,11 +33,11 @@ TODO:
 - [ ] Delete modal (action)
 - [ ] Save modal (action)
 - [ ] plan out Admin actions (see below)
+- [x] user backend
 - [ ] Set up user table / validation
 - [ ] Implement create user action
 - [ ] Implement user auth (login)
-- [ ] Frontend login screen
-- [ ] Frontend session management
+- [ ] Frontend session management (Google)
 
   - A. Users need to create an account
     - Pros: Easy to handle permissions / preferences, Can log in from multiple locations.
