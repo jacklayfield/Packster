@@ -12,9 +12,7 @@ const motd = [
   "What's the plan?",
   "Camping?",
   "Where to?",
-  "What we doin?",
   "Beach?",
-  "How about Caving?",
   "Skiing?",
   "Cool event below ↓",
 ];

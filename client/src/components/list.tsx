@@ -118,6 +118,17 @@ export const List: React.FC<LPROPS> = ({
     // Remove item logic
   };
 
+  const handleDeleteConfirmation = () => {
+    // Remove the item from the list
+    const updatedList = [...listItems];
+    if (selectedIdx !== undefined && !isNaN(selectedIdx)) {
+      updatedList.splice(selectedIdx, 1);
+      setListItems(updatedList);
+    }
+    // Close the delete modal
+    setDisplayDeleteModal(false);
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: any) => {
       if (
@@ -151,7 +162,9 @@ export const List: React.FC<LPROPS> = ({
       <Confirmation
         id={"deleteModal"}
         showModal={displayDeleteModal}
-        confirmModal={() => {}}
+        confirmModal={() => {
+          handleDeleteConfirmation;
+        }}
         hideModal={() => setDisplayDeleteModal(false)}
         message={deleteConfMessage}
         title={deleteConfTitle}
