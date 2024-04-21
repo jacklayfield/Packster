@@ -163,7 +163,7 @@ export const List: React.FC<LPROPS> = ({
         id={"deleteModal"}
         showModal={displayDeleteModal}
         confirmModal={() => {
-          handleDeleteConfirmation;
+          handleDeleteConfirmation();
         }}
         hideModal={() => setDisplayDeleteModal(false)}
         message={deleteConfMessage}

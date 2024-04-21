@@ -46,4 +46,18 @@ router.get("/id=:id", async (req, res) => {
   }
 });
 
+// Get method for all groups for a given user
+router.get("/", async (req, res) => {
+  try {
+    const username = req.body.data.username;
+
+    // Grab data
+    let result = await collections.group.find({ members: username }).toArray();
+
+    res.status(200).send(result);
+  } catch (error) {
+    res.status(500).json(error);
+  }
+});
+
 export default router;
