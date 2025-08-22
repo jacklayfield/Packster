@@ -3,7 +3,6 @@ package ws
 import (
 	"bytes"
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
