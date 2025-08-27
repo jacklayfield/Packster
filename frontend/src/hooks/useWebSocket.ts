@@ -1,30 +1,23 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import type { ClientMessage, ServerMessage } from "../types/messages";
+import { getWebSocket } from "./wsClient";
 
-export function useWebSocket(url: string) {
-  const socketRef = useRef<WebSocket | null>(null);
+export function useWebSocket(roomId: string) {
   const [messages, setMessages] = useState<ServerMessage[]>([]);
 
   useEffect(() => {
-    const ws = new WebSocket(url);
-    socketRef.current = ws;
+    const ws = getWebSocket(roomId);
 
-    ws.onmessage = (event) => {
-      const msg: ServerMessage = JSON.parse(event.data);
-      setMessages((prev) => [...prev, msg]);
-    };
-
-    ws.onclose = () => console.log("WebSocket closed");
+    ws.onopen = () => console.log("WebSocket connected");
+    ws.onmessage = (e) => setMessages((prev) => [...prev, JSON.parse(e.data)]);
     ws.onerror = (err) => console.error("WebSocket error", err);
-
-    return () => ws.close();
-  }, [url]);
+    ws.onclose = () => console.log("WebSocket closed");
+  }, [roomId]);
 
   const send = useCallback((msg: ClientMessage) => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify(msg));
-    }
-  }, []);
+    const ws = getWebSocket(roomId);
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+  }, [roomId]);
 
   return { messages, send };
 }

@@ -6,5 +6,6 @@ export type ClientMessage =
 
 export type ServerMessage =
   | { type: "joined"; roomId: string }
-  | { type: "entry_added"; roomId: string; text: string; user: string }
-  | { type: "error"; message: string };
+  | { type: "entry_added"; text: string; roomId: string }
+  | { type: "error"; message: string }
+  | { type: "sync"; room: string; payload: { items: string[] } };

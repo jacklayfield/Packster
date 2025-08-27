@@ -3,7 +3,6 @@ package ws
 import (
 	"bytes"
 	"encoding/json"
-	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -15,12 +14,6 @@ const (
 	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 64 * 1024
 )
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  4096,
-	WriteBufferSize: 4096,
-	CheckOrigin:     func(r *http.Request) bool { return true }, // NOTE: update this later, allows all origins
-}
 
 type Client struct {
 	hub  *Hub
