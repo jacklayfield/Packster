@@ -5,27 +5,23 @@ type Props = { onAdd: (text: string) => void };
 export default function EntryForm({ onAdd }: Props) {
   const [text, setText] = useState("");
 
+  const submit = () => {
+    if (!text.trim()) return;
+    onAdd(text.trim());
+    setText("");
+  };
+
   return (
-    <div>
+    <>
       <input
         value={text}
         placeholder="New entry"
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            onAdd(text);
-            setText("");
-          }
+          if (e.key === "Enter") submit();
         }}
       />
-      <button
-        onClick={() => {
-          onAdd(text);
-          setText("");
-        }}
-      >
-        Add
-      </button>
-    </div>
+      <button onClick={submit}>Add</button>
+    </>
   );
 }

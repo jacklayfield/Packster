@@ -8,14 +8,14 @@ function App() {
     <div className="p-6">
       <h1>Group Packing App</h1>
       {roomId ? (
-        <Room roomId={roomId} />
+        <Room key={roomId} roomId={roomId} />
       ) : (
         <div>
           <input
             type="text"
             placeholder="Enter Room ID"
             onKeyDown={(e) => {
-              if (e.key === "Enter") setRoomId(e.currentTarget.value);
+              if (e.key === "Enter") setRoomId(e.currentTarget.value.trim());
             }}
           />
           <button onClick={() => setRoomId("default")}>Join Default Room</button>

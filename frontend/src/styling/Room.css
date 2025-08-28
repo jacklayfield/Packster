@@ -1,0 +1,57 @@
+.room-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.room-header {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+.entries-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px 0;
+}
+
+.entry-card {
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 10px 15px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: transform 0.1s ease;
+}
+
+.entry-card:hover {
+  transform: scale(1.02);
+}
+
+.entry-form {
+  display: flex;
+  gap: 10px;
+}
+
+.entry-form input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.entry-form button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background-color: #4f46e5;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.entry-form button:hover {
+  background-color: #4338ca;
+}

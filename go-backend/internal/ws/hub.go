@@ -1,19 +1,16 @@
 package ws
 
-import "sync"
+import (
+	"encoding/json"
+	"log"
+)
 
 type Hub struct {
 	rooms map[string]map[*Client]bool
-	mu    sync.RWMutex
 
 	register   chan *Client
 	unregister chan *Client
-	broadcast  chan Broadcast
-}
-
-type Broadcast struct {
-	room string
-	msg  []byte
+	broadcast  chan Envelope
 }
 
 func NewHub() *Hub {
@@ -21,44 +18,38 @@ func NewHub() *Hub {
 		rooms:      make(map[string]map[*Client]bool),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
-		broadcast:  make(chan Broadcast, 1024),
+		broadcast:  make(chan Envelope),
 	}
 }
 
 func (h *Hub) Run() {
 	for {
 		select {
-		case c := <-h.register:
-			h.mu.Lock()
-			if h.rooms[c.room] == nil {
-				h.rooms[c.room] = make(map[*Client]bool)
+		case client := <-h.register:
+			if h.rooms[client.room] == nil {
+				h.rooms[client.room] = make(map[*Client]bool)
 			}
-			h.rooms[c.room][c] = true
-			h.mu.Unlock()
+			h.rooms[client.room][client] = true
+			log.Printf("Client connected to room %s", client.room)
 
-		case c := <-h.unregister:
-			h.mu.Lock()
-			if peers, ok := h.rooms[c.room]; ok {
-				if _, present := peers[c]; present {
-					delete(peers, c)
-					close(c.send)
-					if len(peers) == 0 {
-						delete(h.rooms, c.room)
+		case client := <-h.unregister:
+			if _, ok := h.rooms[client.room][client]; ok {
+				delete(h.rooms[client.room], client)
+				close(client.send)
+			}
+
+		case message := <-h.broadcast:
+			if clients, ok := h.rooms[message.Room]; ok {
+				data, _ := json.Marshal(message)
+				for client := range clients {
+					select {
+					case client.send <- data:
+					default:
+						close(client.send)
+						delete(clients, client)
 					}
 				}
 			}
-			h.mu.Unlock()
-
-		case b := <-h.broadcast:
-			h.mu.RLock()
-			for c := range h.rooms[b.room] {
-				select {
-				case c.send <- b.msg:
-				default:
-					go c.Close()
-				}
-			}
-			h.mu.RUnlock()
 		}
 	}
 }
