@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useWebSocket } from "../hooks/useWebSocket";
 import type { ClientMessage } from "../types/messages";
-import EntryForm from "./EntryForm";
 import "../styling/Room.css";
 
 type Props = { roomId: string };
@@ -38,19 +37,36 @@ export default function Room({ roomId }: Props) {
     send(message);
   };
 
-  return (
-    <div className="room-container">
-      <h2 className="room-header">Room: {roomId}</h2>
+ return (
+  <div className="room-container">
+    <h2 className="room-header">Room: {roomId}</h2>
 
-      <ul className="entries-list">
-        {entries.map((entry, i) => (
-          <li key={i} className="entry-card">{entry}</li>
-        ))}
-      </ul>
+    <ul className="entries-list">
+      {entries.map((entry, i) => (
+        <li key={i} className="entry-card">{entry}</li>
+      ))}
+    </ul>
 
-      <div className="entry-form">
-        <EntryForm onAdd={handleAddEntry} />
-      </div>
+    <div className="entry-form">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const input = (e.currentTarget.elements.namedItem("entry") as HTMLInputElement);
+          if (input.value.trim() !== "") {
+            handleAddEntry(input.value);
+            input.value = "";
+          }
+        }}
+      >
+        <input
+          type="text"
+          name="entry"
+          placeholder="Add a new entry..."
+          className="entry-input"
+        />
+        <button type="submit" className="entry-button">Add</button>
+      </form>
     </div>
-  );
+  </div>
+);
 }

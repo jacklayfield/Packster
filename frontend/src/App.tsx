@@ -1,28 +1,14 @@
+// src/App.tsx
 import { useState } from "react";
 import Room from "./components/Room";
+import Home from "./components/Home";
 
-function App() {
+export default function App() {
   const [roomId, setRoomId] = useState<string | null>(null);
 
-  return (
-    <div className="p-6">
-      <h1>Group Packing App</h1>
-      {roomId ? (
-        <Room key={roomId} roomId={roomId} />
-      ) : (
-        <div>
-          <input
-            type="text"
-            placeholder="Enter Room ID"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") setRoomId(e.currentTarget.value.trim());
-            }}
-          />
-          <button onClick={() => setRoomId("default")}>Join Default Room</button>
-        </div>
-      )}
-    </div>
+  return roomId ? (
+    <Room key={roomId} roomId={roomId} />
+  ) : (
+    <Home onJoin={(id) => setRoomId(id)} />
   );
 }
-
-export default App;
