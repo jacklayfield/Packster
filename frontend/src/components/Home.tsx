@@ -1,3 +1,4 @@
+import { useState } from "react";
 import "../styling/Home.css";
 
 type HomeProps = {
@@ -5,7 +6,15 @@ type HomeProps = {
 };
 
 export default function Home({ onJoin }: HomeProps) {
+  const [tripName, setTripName] = useState("");
   const numBubbles = 50;
+
+  const handleJoin = () => {
+    const value = tripName.trim();
+    if (value) {
+      onJoin(value);
+    }
+  };
 
   return (
     <div className="home-container">
@@ -14,14 +23,13 @@ export default function Home({ onJoin }: HomeProps) {
         <input
           type="text"
           placeholder="Enter trip name"
+          value={tripName}
+          onChange={(e) => setTripName(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              const value = e.currentTarget.value.trim();
-              if (value) onJoin(value);
-            }
+            if (e.key === "Enter") handleJoin();
           }}
         />
-        <button onClick={() => onJoin("default")}>Join Room</button>
+        <button onClick={handleJoin}>Join Room</button>
       </div>
 
       {Array.from({ length: numBubbles }).map((_, i) => {
