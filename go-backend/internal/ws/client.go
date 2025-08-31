@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"encoding/json"
 	"log"
 	"time"
 
@@ -25,6 +26,7 @@ func (c *Client) readPump() {
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
+
 	c.conn.SetReadLimit(512)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error {
@@ -40,10 +42,31 @@ func (c *Client) readPump() {
 			}
 			break
 		}
-		c.hub.broadcast <- Envelope{
-			Type: "entry_added",
-			Room: c.room,
-			Text: string(message),
+
+		var msg ClientMessage
+		if err := json.Unmarshal(message, &msg); err != nil {
+			log.Printf("invalid client message: %v", err)
+			continue
+		}
+
+		switch msg.Type {
+		case "join":
+			if msg.RoomID != "" {
+				c.room = msg.RoomID
+				log.Printf("Client joined room %s", msg.RoomID)
+			}
+
+		case "add_entry":
+			if msg.Entry != nil {
+				c.hub.broadcast <- Envelope{
+					Type:  "entry_added",
+					Room:  c.room,
+					Entry: msg.Entry,
+				}
+			}
+
+		default:
+			log.Printf("Unknown message type: %s", msg.Type)
 		}
 	}
 }
