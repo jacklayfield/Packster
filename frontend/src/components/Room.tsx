@@ -9,7 +9,6 @@ export default function Room({ roomId }: Props) {
   const { messages, send } = useWebSocket(roomId);
   const [entries, setEntries] = useState<PackingEntry[]>([]);
 
-  // Local state for form inputs
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [cost, setCost] = useState(0);
@@ -60,8 +59,7 @@ export default function Room({ roomId }: Props) {
 
   return (
     <div className="room-container">
-      <h2 className="room-header">Room: {roomId}</h2>
-
+      <h2 className="room-header">{roomId}</h2>
       <ul className="entries-list">
         {entries.map((entry) => (
           <li key={entry.id} className="entry-card">
@@ -71,13 +69,14 @@ export default function Room({ roomId }: Props) {
         ))}
       </ul>
 
-      <div className="entry-form">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleAddEntry();
-          }}
-        >
+      <form
+        className="entry-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleAddEntry();
+        }}
+      >
+        <div className="inputs-container">
           <input
             type="text"
             value={name}
@@ -109,11 +108,13 @@ export default function Room({ roomId }: Props) {
             className="entry-input"
             placeholder="Assigned to"
           />
+        </div>
+        <div className="button-container">
           <button type="submit" className="entry-button">
             Add
           </button>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
 }
