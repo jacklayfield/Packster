@@ -15,27 +15,25 @@ export default function Room({ roomId }: Props) {
   const [assignedTo, setAssignedTo] = useState("Unassigned");
 
   useEffect(() => {
-    if (messages.length === 0) return;
-    const msg = messages[messages.length - 1];
+  if (messages.length === 0) return;
+  const msg = messages[messages.length - 1];
 
-    switch (msg.type) {
-      case "joined":
-        console.log(`Joined room ${msg.roomId}`);
-        break;
-      case "entry_added":
-        setEntries((prev) => [...prev, msg.entry]);
-        break;
-      case "sync":
-        setEntries(msg.payload.items ?? []);
-        break;
-      case "error":
-        console.error(msg.message);
-        break;
-      default:
-        const _exhaustiveCheck: never = msg;
-        return _exhaustiveCheck;
-    }
-  }, [messages]);
+  switch (msg.type) {
+    case "room_snapshot":
+      setEntries(msg.payload ?? []);
+      break;
+    case "entry_added":
+      setEntries((prev) => [...prev, msg.entry]);
+      break;
+    case "error":
+      console.error(msg.message);
+      break;
+    default:
+      const _exhaustiveCheck: never = msg;
+      return _exhaustiveCheck;
+  }
+}, [messages]);
+
 
   const handleAddEntry = () => {
     if (!name.trim()) return;

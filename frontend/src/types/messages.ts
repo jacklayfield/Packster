@@ -7,11 +7,9 @@ export type PackingEntry = {
 };
 
 export type ClientMessage =
-  | { type: "join"; roomId: string }
   | { type: "add_entry"; roomId: string; entry: PackingEntry };
 
 export type ServerMessage =
-  | { type: "joined"; roomId: string }
-  | { type: "entry_added"; entry: PackingEntry }
-  | { type: "sync"; payload: { items: PackingEntry[] } }
+  | { type: "room_snapshot"; room: string; payload: PackingEntry[] }
+  | { type: "entry_added"; room: string; entry: PackingEntry }
   | { type: "error"; message: string };
