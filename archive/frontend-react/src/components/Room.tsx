@@ -15,25 +15,24 @@ export default function Room({ roomId }: Props) {
   const [assignedTo, setAssignedTo] = useState("Unassigned");
 
   useEffect(() => {
-  if (messages.length === 0) return;
-  const msg = messages[messages.length - 1];
+    if (messages.length === 0) return;
+    const msg = messages[messages.length - 1];
 
-  switch (msg.type) {
-    case "room_snapshot":
-      setEntries(msg.payload ?? []);
-      break;
-    case "entry_added":
-      setEntries((prev) => [...prev, msg.entry]);
-      break;
-    case "error":
-      console.error(msg.message);
-      break;
-    default:
-      const _exhaustiveCheck: never = msg;
-      return _exhaustiveCheck;
-  }
-}, [messages]);
-
+    switch (msg.type) {
+      case "room_snapshot":
+        setEntries(msg.payload ?? []);
+        break;
+      case "entry_added":
+        setEntries((prev) => [...prev, msg.entry]);
+        break;
+      case "error":
+        console.error(msg.message);
+        break;
+      default:
+        const _exhaustiveCheck: never = msg;
+        return _exhaustiveCheck;
+    }
+  }, [messages]);
 
   const handleAddEntry = () => {
     if (!name.trim()) return;
@@ -60,10 +59,12 @@ export default function Room({ roomId }: Props) {
       <h2 className="room-header">{roomId}</h2>
       <ul className="entries-list">
         {entries.map((entry) => (
-          <li key={entry.id} className="entry-card">
-            <strong>{entry.name}</strong> — {entry.quantity} pcs — ${entry.cost} —{" "}
-            <em>{entry.assignedTo}</em>
-          </li>
+         <li key={entry.id} className="entry-card">
+          <span className="entry-section"><strong>{entry.name}</strong></span>
+          <span className="entry-section">{entry.quantity} pcs</span>
+          <span className="entry-section">${entry.cost.toFixed(2)}</span>
+          <span className="entry-section"><em>{entry.assignedTo}</em></span>
+        </li>
         ))}
       </ul>
 

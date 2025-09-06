@@ -19,25 +19,49 @@
 .entries-list {
   list-style: none;
   padding: 0;
-  margin-bottom: 2rem;
+  margin: 0 0 2rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .entry-card {
-  background:  #ffffff;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* ✅ 4 equal fixed sections */
+  align-items: center;
+  background: #ffffff;
   border-radius: 12px;
   padding: 0.75rem 1rem;
-  margin-bottom: 0.75rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 1rem;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;          /* ✅ take full width */
+  max-width: 900px;     /* ✅ but don’t go crazy wide */
+  margin: 0 auto;       /* ✅ center in container */
+  text-align: center;   /* ✅ center each section’s text */
 }
 
 .entry-card:hover {
   transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
 }
+
+.entry-section {
+  font-size: 1rem;
+  color: #333;
+  padding: 0 0.5rem;
+  border-right: 1px solid #ddd;
+}
+
+.entry-section:last-child {
+  border-right: none; /* ✅ no divider on last section */
+}
+
+.entry-section strong {
+  font-weight: 600;
+  color: #222;
+}
+
+/* --- Entry Form --- */
 
 .entry-form {
   display: flex;
@@ -51,7 +75,6 @@
   overflow: hidden;
   align-items: stretch;
 }
-
 
 .entry-input + .entry-input {
   border-left: 1px solid #ddd;
