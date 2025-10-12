@@ -8,10 +8,16 @@ type PackingEntry struct {
 	AssignedTo string  `json:"assignedTo"`
 }
 
+type RoomInfo struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 type ClientMessage struct {
-	Type   string        `json:"type"`
-	RoomID string        `json:"roomId,omitempty"`
-	Entry  *PackingEntry `json:"entry,omitempty"`
+	Type     string        `json:"type"`
+	RoomID   string        `json:"roomId,omitempty"`
+	RoomName string        `json:"roomName,omitempty"`
+	Entry    *PackingEntry `json:"entry,omitempty"`
 }
 
 type Envelope struct {

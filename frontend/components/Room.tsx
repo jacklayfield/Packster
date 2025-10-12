@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import type { ClientMessage, PackingEntry } from "@/types/messages";
 
-type Props = { roomId: string };
+type Props = { roomId: string; roomName?: string };
 
-export default function Room({ roomId }: Props) {
-  const { messages, send } = useWebSocket(roomId);
+export default function Room({ roomId, roomName: initialRoomName }: Props) {
+  const { messages, send } = useWebSocket(roomId, initialRoomName);
   const [entries, setEntries] = useState<PackingEntry[]>([]);
+  const [roomName, setRoomName] = useState(initialRoomName || roomId); // Default to initialRoomName or roomId, will be updated from server
 
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -21,19 +22,20 @@ export default function Room({ roomId }: Props) {
 
     switch (msg.type) {
       case "room_snapshot":
-        setEntries(msg.payload ?? []);
+        setEntries(msg.payload.entries ?? []);
+        setRoomName(msg.payload.roomName ?? roomId);
         break;
       case "entry_added":
         setEntries((prev) => [...prev, msg.entry]);
         break;
       case "error":
-        console.error(msg.message);
+        console.error(msg.payload);
         break;
       default:
         const _exhaustiveCheck: never = msg;
         return _exhaustiveCheck;
     }
-  }, [messages]);
+  }, [messages, roomId]);
 
   const handleAddEntry = () => {
     if (!name.trim()) return;
@@ -57,7 +59,8 @@ export default function Room({ roomId }: Props) {
 
   return (
     <div className="max-w-5xl mx-auto p-4 font-sans">
-      <h2 className="text-3xl font-bold text-center mb-6">{roomId}</h2>
+      <h2 className="text-3xl font-bold text-center mb-6">{roomName}</h2>
+      <p className="text-sm text-gray-600 text-center mb-6">Room ID: {roomId}</p>
 
       <ul className="space-y-4">
         {entries.map((entry) => (

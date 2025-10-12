@@ -13,8 +13,8 @@ var upgrader = websocket.Upgrader{
 
 func ServeWS(hub *Hub) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		room := r.URL.Query().Get("room")
-		if room == "" {
+		roomID := r.URL.Query().Get("room")
+		if roomID == "" {
 			http.Error(w, "room required", http.StatusBadRequest)
 			return
 		}
@@ -30,7 +30,7 @@ func ServeWS(hub *Hub) http.Handler {
 			hub:  hub,
 			conn: conn,
 			send: make(chan []byte, 256),
-			room: room,
+			room: roomID,
 		}
 
 		hub.register <- client

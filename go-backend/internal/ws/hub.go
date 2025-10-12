@@ -6,6 +6,8 @@ import (
 )
 
 type Room struct {
+	ID      string
+	Name    string
 	clients map[*Client]bool
 	entries []*PackingEntry
 }
@@ -27,15 +29,62 @@ func NewHub() *Hub {
 	}
 }
 
-func (h *Hub) getOrCreateRoom(name string) *Room {
-	room, ok := h.rooms[name]
-	if !ok {
-		room = &Room{
-			clients: make(map[*Client]bool),
-			entries: []*PackingEntry{},
-		}
-		h.rooms[name] = room
+func (h *Hub) createRoom(id, name string, client *Client) *Room {
+	room := &Room{
+		ID:      id,
+		Name:    name,
+		clients: make(map[*Client]bool),
+		entries: []*PackingEntry{},
 	}
+	h.rooms[id] = room
+	room.clients[client] = true
+
+	// Send room snapshot to the client
+	snapshot := Envelope{
+		Type: "room_snapshot",
+		Room: id,
+		Payload: map[string]interface{}{
+			"entries":  room.entries,
+			"roomName": room.Name,
+		},
+	}
+	data, _ := json.Marshal(snapshot)
+	select {
+	case client.send <- data:
+	default:
+		close(client.send)
+		delete(room.clients, client)
+	}
+
+	return room
+}
+
+func (h *Hub) joinRoom(id string, client *Client) *Room {
+	room, ok := h.rooms[id]
+	if !ok {
+		// Room doesn't exist, return nil
+		return nil
+	}
+
+	room.clients[client] = true
+
+	// Send room snapshot to the client
+	snapshot := Envelope{
+		Type: "room_snapshot",
+		Room: id,
+		Payload: map[string]interface{}{
+			"entries":  room.entries,
+			"roomName": room.Name,
+		},
+	}
+	data, _ := json.Marshal(snapshot)
+	select {
+	case client.send <- data:
+	default:
+		close(client.send)
+		delete(room.clients, client)
+	}
+
 	return room
 }
 
@@ -43,22 +92,8 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.register:
-			room := h.getOrCreateRoom(client.room)
-			room.clients[client] = true
-			log.Printf("Client connected to room %s", client.room)
-
-			snapshot := Envelope{
-				Type:    "room_snapshot",
-				Room:    client.room,
-				Payload: room.entries,
-			}
-			data, _ := json.Marshal(snapshot)
-			select {
-			case client.send <- data:
-			default:
-				close(client.send)
-				delete(room.clients, client)
-			}
+			// Client is registered but room will be created/joined via message
+			log.Printf("Client connected with room ID %s", client.room)
 
 		case client := <-h.unregister:
 			if room, ok := h.rooms[client.room]; ok {
@@ -71,8 +106,11 @@ func (h *Hub) Run() {
 		case message := <-h.broadcast:
 			room, ok := h.rooms[message.Room]
 			if !ok {
-				room = h.getOrCreateRoom(message.Room)
+				// Room doesn't exist, this shouldn't happen in normal flow
+				log.Printf("Room %s not found", message.Room)
+				continue
 			}
+
 			if message.Type == "entry_added" && message.Entry != nil {
 				room.entries = append(room.entries, message.Entry)
 			}

@@ -53,7 +53,31 @@ func (c *Client) readPump() {
 		case "join":
 			if msg.RoomID != "" {
 				c.room = msg.RoomID
-				log.Printf("Client joined room %s", msg.RoomID)
+				room := c.hub.joinRoom(msg.RoomID, c)
+				if room == nil {
+					log.Printf("Failed to join room %s - room not found", msg.RoomID)
+					// Send error message to client
+					errorMsg := Envelope{
+						Type:    "error",
+						Room:    msg.RoomID,
+						Payload: "Room not found",
+					}
+					data, _ := json.Marshal(errorMsg)
+					select {
+					case c.send <- data:
+					default:
+						close(c.send)
+					}
+				} else {
+					log.Printf("Client joined room %s", msg.RoomID)
+				}
+			}
+
+		case "create_room":
+			if msg.RoomID != "" && msg.RoomName != "" {
+				c.room = msg.RoomID
+				c.hub.createRoom(msg.RoomID, msg.RoomName, c)
+				log.Printf("Client created room %s with name %s", msg.RoomID, msg.RoomName)
 			}
 
 		case "add_entry":

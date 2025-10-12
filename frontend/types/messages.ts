@@ -6,10 +6,17 @@ export type PackingEntry = {
   assignedTo: string;
 };
 
+export type RoomInfo = {
+  id: string;
+  name: string;
+};
+
 export type ClientMessage =
+  | { type: "create_room"; roomId: string; roomName: string }
+  | { type: "join"; roomId: string }
   | { type: "add_entry"; roomId: string; entry: PackingEntry };
 
 export type ServerMessage =
-  | { type: "room_snapshot"; room: string; payload: PackingEntry[] }
+  | { type: "room_snapshot"; room: string; payload: { entries: PackingEntry[]; roomName: string } }
   | { type: "entry_added"; room: string; entry: PackingEntry }
-  | { type: "error"; message: string };
+  | { type: "error"; room: string; payload: string };

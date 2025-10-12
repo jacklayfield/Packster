@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { ClientMessage, ServerMessage } from "@/types/messages";
 
-export function useWebSocket(roomId: string) {
+export function useWebSocket(roomId: string, roomName?: string) {
   const wsRef = useRef<WebSocket | null>(null);
   const [messages, setMessages] = useState<ServerMessage[]>([]);
 
@@ -9,13 +9,33 @@ export function useWebSocket(roomId: string) {
     const ws = new WebSocket(`ws://localhost:8080/ws/?room=${roomId}`);
     wsRef.current = ws;
 
-    ws.onopen = () => console.log(`WebSocket connected to room ${roomId}`);
+    ws.onopen = () => {
+      console.log(`WebSocket connected to room ${roomId}`);
+      // Send join or create room message
+      if (roomName) {
+        // This is a new room creation
+        const createMessage: ClientMessage = {
+          type: "create_room",
+          roomId,
+          roomName
+        };
+        ws.send(JSON.stringify(createMessage));
+      } else {
+        // This is joining an existing room
+        const joinMessage: ClientMessage = {
+          type: "join",
+          roomId
+        };
+        ws.send(JSON.stringify(joinMessage));
+      }
+    };
+    
     ws.onmessage = (e) => setMessages(prev => [...prev, JSON.parse(e.data)]);
     ws.onerror = (err) => console.error("WebSocket error", err);
     ws.onclose = () => console.log(`WebSocket closed for room ${roomId}`);
 
     return () => ws.close(); 
-  }, [roomId]);
+  }, [roomId, roomName]);
 
   const send = useCallback((msg: ClientMessage) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
