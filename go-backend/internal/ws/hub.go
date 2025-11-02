@@ -30,6 +30,29 @@ func NewHub() *Hub {
 }
 
 func (h *Hub) createRoom(id, name string, client *Client) *Room {
+	if room, exists := h.rooms[id]; exists {
+		// Room already exists, just join
+		room.clients[client] = true
+		// Send snapshot to client
+		snapshot := Envelope{
+			Type: "room_snapshot",
+			Room: id,
+			Payload: map[string]interface{}{
+				"entries":  room.entries,
+				"roomName": room.Name,
+			},
+		}
+		data, _ := json.Marshal(snapshot)
+		select {
+		case client.send <- data:
+		default:
+			close(client.send)
+			delete(room.clients, client)
+		}
+		return room
+	}
+
+	// Room does not exist, create it
 	room := &Room{
 		ID:      id,
 		Name:    name,
@@ -39,7 +62,7 @@ func (h *Hub) createRoom(id, name string, client *Client) *Room {
 	h.rooms[id] = room
 	room.clients[client] = true
 
-	// Send room snapshot to the client
+	// Send snapshot to client
 	snapshot := Envelope{
 		Type: "room_snapshot",
 		Room: id,

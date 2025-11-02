@@ -9,7 +9,7 @@ type Props = { roomId: string; roomName?: string };
 export default function Room({ roomId, roomName: initialRoomName }: Props) {
   const { messages, send } = useWebSocket(roomId, initialRoomName);
   const [entries, setEntries] = useState<PackingEntry[]>([]);
-  const [roomName, setRoomName] = useState(initialRoomName || roomId); // Default to initialRoomName or roomId, will be updated from server
+  const [roomName, setRoomName] = useState(initialRoomName || roomId);
 
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -62,6 +62,14 @@ export default function Room({ roomId, roomName: initialRoomName }: Props) {
       <h2 className="text-3xl font-bold text-center mb-6">{roomName}</h2>
       <p className="text-sm text-gray-600 text-center mb-6">Room ID: {roomId}</p>
 
+      {/* Header Row */}
+      <div className="flex justify-between text-gray-700 font-semibold mb-2 px-4">
+        <span className="w-1/4">Item Name</span>
+        <span className="w-1/4 text-center">Quantity</span>
+        <span className="w-1/4 text-center">Cost</span>
+        <span className="w-1/4 text-right">Assigned To</span>
+      </div>
+
       <ul className="space-y-4">
         {entries.map((entry) => (
           <li
@@ -78,7 +86,10 @@ export default function Room({ roomId, roomName: initialRoomName }: Props) {
 
       <form
         className="flex flex-col mt-6 gap-3"
-        onSubmit={(e) => { e.preventDefault(); handleAddEntry(); }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleAddEntry();
+        }}
       >
         <div className="flex gap-3">
           <input

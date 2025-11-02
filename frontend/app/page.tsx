@@ -9,7 +9,8 @@ export default function HomePage() {
   const handleJoin = (roomId: string, roomName?: string) => {
     if (roomName) {
       // Creating a new room - pass the room name as a query parameter
-      router.push(`/room/${roomId}?name=${encodeURIComponent(roomName)}`);
+      console.log(roomName, roomId)
+      router.push(`/room/${roomId}?room=${encodeURIComponent(roomName)}`);
     } else {
       // Joining an existing room
       router.push(`/room/${roomId}`);
