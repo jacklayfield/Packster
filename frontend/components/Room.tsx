@@ -15,6 +15,25 @@ export default function Room({ roomId, roomName: initialRoomName }: Props) {
   const [quantity, setQuantity] = useState<number | "">("");
   const [cost, setCost] = useState<number | "">("");
   const [assignedTo, setAssignedTo] = useState("Unassigned");
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
+  const [shareLink, setShareLink] = useState("");
+
+  useEffect(() => {
+    setShareLink(`${window.location.origin}/room/${roomId}`);
+  }, [roomId]);
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareLink);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 500);
+  };
+
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(roomId);
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2000);
+  };
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -61,7 +80,53 @@ export default function Room({ roomId, roomName: initialRoomName }: Props) {
     <div className="max-w-5xl mx-auto p-4 font-sans">
 
       <h2 className="text-3xl font-bold text-center mb-6">{roomName}</h2>
-      <p className="text-sm text-gray-600 text-center mb-6">Room ID: {roomId}</p>
+
+      {/* Share Link Section */}
+      <div className="flex justify-center items-center gap-3 mb-6 text-sm">
+        <span className="text-gray-600 font-semibold">Share:</span>
+        <code className="bg-blue-100 text-blue-900 px-3 py-1 rounded font-mono font-semibold">
+          {shareLink}
+        </code>
+        <button
+          onClick={handleCopyLink}
+          className="px-2 py-1 bg-blue-500 text-white text-xs font-semibold rounded hover:bg-blue-600 transition whitespace-nowrap cursor-pointer"
+        >
+          {copiedLink ? "✓" : "Copy Link"}
+        </button>
+        <span className="text-gray-400">|</span>
+        <button
+          onClick={handleCopyId}
+          className="px-2 py-1 bg-gray-500 text-white text-xs font-semibold rounded hover:bg-gray-600 transition cursor-pointer"
+          title={`Room ID: ${roomId}`}
+        >
+          {copiedId ? "✓" : "Copy ID"}
+        </button>
+      </div>
+
+      {/* Info Row */}
+      <div className="flex gap-4 mb-6">
+        {/* Budget Bubble */}
+        <div className="flex-1 bg-green-50 rounded-xl shadow-md p-4 text-center">
+          <p className="text-gray-700 text-sm font-semibold mb-1">Budget</p>
+          <p className="text-2xl font-bold text-blue-600">
+            ${entries.reduce((sum, entry) => sum + entry.cost, 0).toFixed(2)} / $150
+          </p>
+        </div>
+
+        {/* Description Bubble */}
+        <div className="flex-2 bg-blue-50 rounded-xl shadow-md p-4 text-center">
+          <p className="text-gray-700 text-sm font-semibold mb-1">Description</p>
+          <p className="text-sm text-gray-600 italic">Add trip details here</p>
+        </div>
+
+        {/* Date Bubble */}
+        <div className="flex-1 bg-purple-50 rounded-xl shadow-md p-4 text-center">
+          <p className="text-gray-700 text-sm font-semibold mb-1">Date</p>
+          <p className="text-lg font-semibold text-purple-600">
+            {new Date().toLocaleDateString()}
+          </p>
+        </div>
+      </div>
 
       {/* Header Row */}
       <div className="flex justify-between text-gray-700 font-semibold mb-2 px-4">
@@ -145,7 +210,7 @@ export default function Room({ roomId, roomName: initialRoomName }: Props) {
 
         <button
           type="submit"
-          className="self-end px-6 py-2 bg-blue-500 text-white font-semibold rounded-xl shadow hover:bg-blue-600 transition"
+          className="self-end px-6 py-2 bg-blue-500 text-white font-semibold rounded-xl shadow hover:bg-blue-600 transition cursor-pointer"
         >
           Add
         </button>
