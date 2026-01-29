@@ -36,12 +36,12 @@ export default function Home({ onJoin }: HomeProps) {
         };
       });
     };
-    
+
     setBubbles(generateBubbles());
   }, [numBubbles]);
 
   const generateRoomId = () => {
-    return crypto.randomUUID();
+    return crypto.randomUUID().replace(/-/g, "");
   };
 
   const handleCreateRoom = () => {
@@ -67,21 +67,19 @@ export default function Home({ onJoin }: HomeProps) {
       <div className="flex gap-2 mb-6 bg-white/20 rounded-xl p-1">
         <button
           onClick={() => setIsCreating(true)}
-          className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-            isCreating 
-              ? "bg-white text-blue-600 shadow-md" 
-              : "text-white hover:bg-white/10"
-          }`}
+          className={`px-4 py-2 rounded-lg font-semibold transition-colors ${isCreating
+            ? "bg-white text-blue-600 shadow-md"
+            : "text-white hover:bg-white/10"
+            }`}
         >
           Create Room
         </button>
         <button
           onClick={() => setIsCreating(false)}
-          className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-            !isCreating 
-              ? "bg-white text-blue-600 shadow-md" 
-              : "text-white hover:bg-white/10"
-          }`}
+          className={`px-4 py-2 rounded-lg font-semibold transition-colors ${!isCreating
+            ? "bg-white text-blue-600 shadow-md"
+            : "text-white hover:bg-white/10"
+            }`}
         >
           Join Room
         </button>
