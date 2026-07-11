@@ -40,21 +40,22 @@ export default function Home({ onJoin }: HomeProps) {
     setBubbles(generateBubbles());
   }, [numBubbles]);
 
-  const generateRoomId = () => {
-    return crypto.randomUUID().replace(/-/g, "");
-  };
-
   const handleCreateRoom = () => {
     const value = tripName.trim();
     if (value) {
-      const newRoomId = generateRoomId();
-      onJoin(newRoomId, value);
+      onJoin("", value);
+    } else {
+      onJoin("", "My Trip");
     }
   };
 
   const handleJoinRoom = () => {
     const value = roomId.trim();
-    if (value) onJoin(value);
+    if (value) {
+      onJoin(value);
+    } else {
+      onJoin("demo-room");
+    }
   };
 
   return (
@@ -63,68 +64,70 @@ export default function Home({ onJoin }: HomeProps) {
         Packster
       </h1>
 
-      {/* Toggle buttons */}
-      <div className="flex gap-2 mb-6 bg-white/20 rounded-xl p-1">
-        <button
-          onClick={() => setIsCreating(true)}
-          className={`px-4 py-2 rounded-lg font-semibold transition-colors ${isCreating
-            ? "bg-white text-blue-600 shadow-md"
-            : "text-white hover:bg-white/10"
-            }`}
-        >
-          Create Room
-        </button>
-        <button
-          onClick={() => setIsCreating(false)}
-          className={`px-4 py-2 rounded-lg font-semibold transition-colors ${!isCreating
-            ? "bg-white text-blue-600 shadow-md"
-            : "text-white hover:bg-white/10"
-            }`}
-        >
-          Join Room
-        </button>
-      </div>
-
-      {isCreating ? (
-        <div className="flex flex-col gap-3 mb-8">
-          <input
-            type="text"
-            placeholder="Enter trip name"
-            value={tripName}
-            onChange={(e) => setTripName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleCreateRoom(); }}
-            className="px-4 py-2 rounded-xl border-none outline-none shadow-md text-black"
-          />
+      <div className="relative z-10 flex flex-col items-center">
+        {/* Toggle buttons */}
+        <div className="flex gap-2 mb-6 bg-white/20 rounded-xl p-1">
           <button
-            onClick={handleCreateRoom}
-            className="px-5 py-2 rounded-xl bg-pink-400 text-white font-semibold hover:bg-pink-600 transition-transform transform hover:scale-105"
+            onClick={() => setIsCreating(true)}
+            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${isCreating
+              ? "bg-white text-blue-600 shadow-md"
+              : "text-white hover:bg-white/10"
+              }`}
           >
             Create Room
           </button>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3 mb-8">
-          <input
-            type="text"
-            placeholder="Enter room ID"
-            value={roomId}
-            onChange={(e) => setRoomId(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleJoinRoom(); }}
-            className="px-4 py-2 rounded-xl border-none outline-none shadow-md text-black"
-          />
           <button
-            onClick={handleJoinRoom}
-            className="px-5 py-2 rounded-xl bg-green-400 text-white font-semibold hover:bg-green-600 transition-transform transform hover:scale-105"
+            onClick={() => setIsCreating(false)}
+            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${!isCreating
+              ? "bg-white text-blue-600 shadow-md"
+              : "text-white hover:bg-white/10"
+              }`}
           >
             Join Room
           </button>
         </div>
-      )}
+
+        {isCreating ? (
+          <div className="flex flex-col gap-3 mb-8">
+            <input
+              type="text"
+              placeholder="Enter trip name"
+              value={tripName}
+              onChange={(e) => setTripName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleCreateRoom(); }}
+              className="px-4 py-2 rounded-xl border-none outline-none shadow-md text-black"
+            />
+            <button
+              onClick={handleCreateRoom}
+              className="px-5 py-2 rounded-xl bg-pink-400 text-white font-semibold hover:bg-pink-600 transition-transform transform hover:scale-105"
+            >
+              Create Room
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 mb-8">
+            <input
+              type="text"
+              placeholder="Enter room ID"
+              value={roomId}
+              onChange={(e) => setRoomId(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleJoinRoom(); }}
+              className="px-4 py-2 rounded-xl border-none outline-none shadow-md text-black"
+            />
+            <button
+              onClick={handleJoinRoom}
+              className="px-5 py-2 rounded-xl bg-green-400 text-white font-semibold hover:bg-green-600 transition-transform transform hover:scale-105"
+            >
+              Join Room
+            </button>
+          </div>
+        )}
+      </div>
 
       {bubbles.map((b) => (
         <div
           key={b.id}
-          className="absolute bottom-[-50px] bg-white rounded-full animate-rise"
+          className="absolute bottom-[-50px] bg-white rounded-full animate-rise pointer-events-none"
           style={{
             left: b.left,
             width: `${b.size}px`,

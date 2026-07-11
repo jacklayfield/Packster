@@ -4,12 +4,21 @@ import { useState, useEffect } from "react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import type { ClientMessage, PackingEntry } from "@/types/messages";
 
-type Props = { roomId: string; roomName?: string };
+type Props = {
+  roomId: string;
+  roomName?: string;
+  budget?: string;
+  description?: string;
+  date?: string;
+};
 
-export default function Room({ roomId, roomName: initialRoomName }: Props) {
+export default function Room({ roomId, roomName: initialRoomName, budget, description, date }: Props) {
   const { messages, send } = useWebSocket(roomId, initialRoomName);
   const [entries, setEntries] = useState<PackingEntry[]>([]);
   const [roomName, setRoomName] = useState(initialRoomName || roomId);
+  const [tripBudget, setTripBudget] = useState(budget || "0");
+  const [tripDescription, setTripDescription] = useState(description || "Add trip details here");
+  const [tripDate, setTripDate] = useState(date || new Date().toLocaleDateString());
 
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState<number | "">("");
@@ -20,8 +29,17 @@ export default function Room({ roomId, roomName: initialRoomName }: Props) {
   const [shareLink, setShareLink] = useState("");
 
   useEffect(() => {
-    setShareLink(`${window.location.origin}/room/${roomId}`);
-  }, [roomId]);
+    const params = new URLSearchParams();
+    if (initialRoomName) params.set("room", initialRoomName);
+    if (budget) params.set("budget", budget);
+    if (description) params.set("description", description);
+    if (date) params.set("date", date);
+
+    setShareLink(`${window.location.origin}/room/${roomId}${params.toString() ? `?${params.toString()}` : ""}`);
+    setTripBudget(budget || "0");
+    setTripDescription(description || "Add trip details here");
+    setTripDate(date || new Date().toLocaleDateString());
+  }, [roomId, initialRoomName, budget, description, date]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareLink);
@@ -109,21 +127,21 @@ export default function Room({ roomId, roomName: initialRoomName }: Props) {
         <div className="flex-1 bg-green-50 rounded-xl shadow-md p-4 text-center">
           <p className="text-gray-700 text-sm font-semibold mb-1">Budget</p>
           <p className="text-2xl font-bold text-blue-600">
-            ${entries.reduce((sum, entry) => sum + entry.cost, 0).toFixed(2)} / $150
+            ${entries.reduce((sum, entry) => sum + entry.cost, 0).toFixed(2)} / ${Number(tripBudget || 0).toFixed(2)}
           </p>
         </div>
 
         {/* Description Bubble */}
         <div className="flex-2 bg-blue-50 rounded-xl shadow-md p-4 text-center">
           <p className="text-gray-700 text-sm font-semibold mb-1">Description</p>
-          <p className="text-sm text-gray-600 italic">Add trip details here</p>
+          <p className="text-sm text-gray-600 italic">{tripDescription}</p>
         </div>
 
         {/* Date Bubble */}
         <div className="flex-1 bg-purple-50 rounded-xl shadow-md p-4 text-center">
           <p className="text-gray-700 text-sm font-semibold mb-1">Date</p>
           <p className="text-lg font-semibold text-purple-600">
-            {new Date().toLocaleDateString()}
+            {tripDate}
           </p>
         </div>
       </div>
