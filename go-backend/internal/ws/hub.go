@@ -6,10 +6,13 @@ import (
 )
 
 type Room struct {
-	ID      string
-	Name    string
-	clients map[*Client]bool
-	entries []*PackingEntry
+	ID          string
+	Name        string
+	Budget      string
+	Description string
+	Date        string
+	clients     map[*Client]bool
+	entries     []*PackingEntry
 }
 
 type Hub struct {
@@ -29,8 +32,20 @@ func NewHub() *Hub {
 	}
 }
 
-func (h *Hub) createRoom(id, name string, client *Client) *Room {
+func (h *Hub) createRoom(id, name, budget, description, date string, client *Client) *Room {
 	if room, exists := h.rooms[id]; exists {
+		if name != "" {
+			room.Name = name
+		}
+		if budget != "" {
+			room.Budget = budget
+		}
+		if description != "" {
+			room.Description = description
+		}
+		if date != "" {
+			room.Date = date
+		}
 		// Room already exists, just join
 		room.clients[client] = true
 		// Send snapshot to client
@@ -38,8 +53,11 @@ func (h *Hub) createRoom(id, name string, client *Client) *Room {
 			Type: "room_snapshot",
 			Room: id,
 			Payload: map[string]interface{}{
-				"entries":  room.entries,
-				"roomName": room.Name,
+				"entries":     room.entries,
+				"roomName":    room.Name,
+				"budget":      room.Budget,
+				"description": room.Description,
+				"date":        room.Date,
 			},
 		}
 		data, _ := json.Marshal(snapshot)
@@ -54,10 +72,13 @@ func (h *Hub) createRoom(id, name string, client *Client) *Room {
 
 	// Room does not exist, create it
 	room := &Room{
-		ID:      id,
-		Name:    name,
-		clients: make(map[*Client]bool),
-		entries: []*PackingEntry{},
+		ID:          id,
+		Name:        name,
+		Budget:      budget,
+		Description: description,
+		Date:        date,
+		clients:     make(map[*Client]bool),
+		entries:     []*PackingEntry{},
 	}
 	h.rooms[id] = room
 	room.clients[client] = true
@@ -67,8 +88,11 @@ func (h *Hub) createRoom(id, name string, client *Client) *Room {
 		Type: "room_snapshot",
 		Room: id,
 		Payload: map[string]interface{}{
-			"entries":  room.entries,
-			"roomName": room.Name,
+			"entries":     room.entries,
+			"roomName":    room.Name,
+			"budget":      room.Budget,
+			"description": room.Description,
+			"date":        room.Date,
 		},
 	}
 	data, _ := json.Marshal(snapshot)
@@ -96,8 +120,11 @@ func (h *Hub) joinRoom(id string, client *Client) *Room {
 		Type: "room_snapshot",
 		Room: id,
 		Payload: map[string]interface{}{
-			"entries":  room.entries,
-			"roomName": room.Name,
+			"entries":     room.entries,
+			"roomName":    room.Name,
+			"budget":      room.Budget,
+			"description": room.Description,
+			"date":        room.Date,
 		},
 	}
 	data, _ := json.Marshal(snapshot)

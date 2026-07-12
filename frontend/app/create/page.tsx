@@ -29,10 +29,19 @@ function CreateRoomForm() {
         const roomId = crypto.randomUUID().replace(/-/g, "");
         const params = new URLSearchParams({
             room: tripName,
-            budget: budget.trim(),
-            description: description.trim(),
-            date: date,
         });
+
+        if (typeof window !== "undefined") {
+            window.localStorage.setItem(
+                `packster-room:${roomId}`,
+                JSON.stringify({
+                    roomName: tripName,
+                    budget: budget.trim(),
+                    description: description.trim(),
+                    date,
+                })
+            );
+        }
 
         router.push(`/room/${roomId}?${params.toString()}`);
     };

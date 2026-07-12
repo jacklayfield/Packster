@@ -12,11 +12,11 @@ export type RoomInfo = {
 };
 
 export type ClientMessage =
-  | { type: "create_room"; roomId: string; roomName: string }
+  | { type: "create_room"; roomId: string; roomName: string; budget?: string; description?: string; date?: string }
   | { type: "join"; roomId: string }
   | { type: "add_entry"; roomId: string; entry: PackingEntry };
 
 export type ServerMessage =
-  | { type: "room_snapshot"; room: string; payload: { entries: PackingEntry[]; roomName: string } }
+  | { type: "room_snapshot"; room: string; payload: { entries: PackingEntry[]; roomName: string; budget?: string; description?: string; date?: string } }
   | { type: "entry_added"; room: string; entry: PackingEntry }
   | { type: "error"; room: string; payload: string };

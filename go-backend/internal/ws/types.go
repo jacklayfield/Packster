@@ -14,10 +14,13 @@ type RoomInfo struct {
 }
 
 type ClientMessage struct {
-	Type     string        `json:"type"`
-	RoomID   string        `json:"roomId,omitempty"`
-	RoomName string        `json:"roomName,omitempty"`
-	Entry    *PackingEntry `json:"entry,omitempty"`
+	Type        string        `json:"type"`
+	RoomID      string        `json:"roomId,omitempty"`
+	RoomName    string        `json:"roomName,omitempty"`
+	Budget      string        `json:"budget,omitempty"`
+	Description string        `json:"description,omitempty"`
+	Date        string        `json:"date,omitempty"`
+	Entry       *PackingEntry `json:"entry,omitempty"`
 }
 
 type Envelope struct {

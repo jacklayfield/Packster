@@ -1,19 +1,45 @@
 "use client";
 
-import { Suspense, use } from "react";
+import { Suspense, use, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Room from "@/components/Room";
 
 type ParamsType = Promise<{ roomId: string }>;
 
+type StoredRoomData = {
+  roomName?: string;
+  budget?: string;
+  description?: string;
+  date?: string;
+};
+
 function RoomPageContent({ roomId }: { roomId: string }) {
   const searchParams = useSearchParams();
-  const roomName = searchParams.get("room");
-  const budget = searchParams.get("budget") || undefined;
-  const description = searchParams.get("description") || undefined;
-  const date = searchParams.get("date") || undefined;
+  const roomNameFromUrl = searchParams.get("room") || undefined;
+  const [storedRoomData, setStoredRoomData] = useState<StoredRoomData>({});
 
-  return <Room roomId={roomId} roomName={roomName || undefined} budget={budget} description={description} date={date} />;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const storedValue = window.localStorage.getItem(`packster-room:${roomId}`);
+      if (storedValue) {
+        setStoredRoomData(JSON.parse(storedValue));
+      }
+    } catch {
+      setStoredRoomData({});
+    }
+  }, [roomId]);
+
+  return (
+    <Room
+      roomId={roomId}
+      roomName={roomNameFromUrl || storedRoomData.roomName}
+      budget={storedRoomData.budget}
+      description={storedRoomData.description}
+      date={storedRoomData.date}
+    />
+  );
 }
 
 export default function RoomPage({ params }: { params: ParamsType }) {

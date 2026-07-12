@@ -13,7 +13,7 @@ type Props = {
 };
 
 export default function Room({ roomId, roomName: initialRoomName, budget, description, date }: Props) {
-  const { messages, send } = useWebSocket(roomId, initialRoomName);
+  const { messages, send } = useWebSocket(roomId, initialRoomName, { budget, description, date });
   const [entries, setEntries] = useState<PackingEntry[]>([]);
   const [roomName, setRoomName] = useState(initialRoomName || roomId);
   const [tripBudget, setTripBudget] = useState(budget || "0");
@@ -29,17 +29,17 @@ export default function Room({ roomId, roomName: initialRoomName, budget, descri
   const [shareLink, setShareLink] = useState("");
 
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (initialRoomName) params.set("room", initialRoomName);
-    if (budget) params.set("budget", budget);
-    if (description) params.set("description", description);
-    if (date) params.set("date", date);
-
-    setShareLink(`${window.location.origin}/room/${roomId}${params.toString() ? `?${params.toString()}` : ""}`);
-    setTripBudget(budget || "0");
-    setTripDescription(description || "Add trip details here");
-    setTripDate(date || new Date().toLocaleDateString());
-  }, [roomId, initialRoomName, budget, description, date]);
+    setShareLink(`${window.location.origin}/room/${roomId}`);
+    if (budget) {
+      setTripBudget(budget);
+    }
+    if (description) {
+      setTripDescription(description);
+    }
+    if (date) {
+      setTripDate(date);
+    }
+  }, [roomId, budget, description, date]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareLink);
@@ -61,6 +61,9 @@ export default function Room({ roomId, roomName: initialRoomName, budget, descri
       case "room_snapshot":
         setEntries(msg.payload.entries ?? []);
         setRoomName(msg.payload.roomName ?? roomId);
+        setTripBudget(msg.payload.budget || budget || "0");
+        setTripDescription(msg.payload.description || description || "Add trip details here");
+        setTripDate(msg.payload.date || date || new Date().toLocaleDateString());
         break;
       case "entry_added":
         setEntries((prev) => [...prev, msg.entry]);

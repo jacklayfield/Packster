@@ -76,7 +76,7 @@ func (c *Client) readPump() {
 		case "create_room":
 			if msg.RoomID != "" && msg.RoomName != "" {
 				c.room = msg.RoomID
-				c.hub.createRoom(msg.RoomID, msg.RoomName, c)
+				c.hub.createRoom(msg.RoomID, msg.RoomName, msg.Budget, msg.Description, msg.Date, c)
 				log.Printf("Client created room %s with name %s", msg.RoomID, msg.RoomName)
 			}
 
