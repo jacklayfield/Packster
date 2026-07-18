@@ -13,7 +13,18 @@ type Props = {
 };
 
 export default function Room({ roomId, roomName: initialRoomName, budget, description, date }: Props) {
-  const { messages, send } = useWebSocket(roomId, initialRoomName, { budget, description, date });
+  const [userId, setUserId] = useState("");
+  const [displayName, setDisplayName] = useState("");
+
+  // Get guest ID and display name from localStorage
+  useEffect(() => {
+    const storedGuestId = localStorage.getItem("packster_guest_id");
+    setUserId(storedGuestId || "");
+    const storedDisplayName = localStorage.getItem("packster_display_name");
+    setDisplayName(storedDisplayName || "Guest");
+  }, []);
+
+  const { messages, send } = useWebSocket(roomId, userId, displayName, initialRoomName, { budget, description, date });
   const [entries, setEntries] = useState<PackingEntry[]>([]);
   const [roomName, setRoomName] = useState(initialRoomName || roomId);
   const [tripBudget, setTripBudget] = useState(budget || "0");
@@ -67,6 +78,9 @@ export default function Room({ roomId, roomName: initialRoomName, budget, descri
         break;
       case "entry_added":
         setEntries((prev) => [...prev, msg.entry]);
+        break;
+      case "user_joined":
+        console.log(`${msg.payload.displayName} joined the trip`);
         break;
       case "error":
         console.error(msg.payload);

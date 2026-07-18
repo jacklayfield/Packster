@@ -3,6 +3,7 @@ package ws
 import (
 	"encoding/json"
 	"log"
+	"time"
 )
 
 type Room struct {
@@ -11,28 +12,34 @@ type Room struct {
 	Budget      string
 	Description string
 	Date        string
-	clients     map[*Client]bool
+	OwnerID     string                 // UUID of the room creator
+	clients     map[*Client]bool       // Active WebSocket connections
+	memberships map[string]*Membership // UserID -> Membership
 	entries     []*PackingEntry
+	inviteToken string
 }
 
 type Hub struct {
-	rooms map[string]*Room
-
-	register   chan *Client
-	unregister chan *Client
-	broadcast  chan Envelope
+	rooms       map[string]*Room
+	users       map[string]*User       // Track user info
+	inviteLinks map[string]*InviteLink // Token -> InviteLink
+	register    chan *Client
+	unregister  chan *Client
+	broadcast   chan Envelope
 }
 
 func NewHub() *Hub {
 	return &Hub{
-		rooms:      make(map[string]*Room),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		broadcast:  make(chan Envelope),
+		rooms:       make(map[string]*Room),
+		users:       make(map[string]*User),
+		inviteLinks: make(map[string]*InviteLink),
+		register:    make(chan *Client),
+		unregister:  make(chan *Client),
+		broadcast:   make(chan Envelope),
 	}
 }
 
-func (h *Hub) createRoom(id, name, budget, description, date string, client *Client) *Room {
+func (h *Hub) createRoom(id, name, budget, description, date, userID, displayName string, client *Client) *Room {
 	if room, exists := h.rooms[id]; exists {
 		if name != "" {
 			room.Name = name
@@ -46,9 +53,13 @@ func (h *Hub) createRoom(id, name, budget, description, date string, client *Cli
 		if date != "" {
 			room.Date = date
 		}
-		// Room already exists, just join
+		// Room already exists, add user to membership if not already
 		room.clients[client] = true
-		// Send snapshot to client
+		if _, ok := room.memberships[userID]; !ok {
+			h.addMembership(id, userID, displayName)
+		}
+
+		// Send snapshot to client with members
 		snapshot := Envelope{
 			Type: "room_snapshot",
 			Room: id,
@@ -58,6 +69,7 @@ func (h *Hub) createRoom(id, name, budget, description, date string, client *Cli
 				"budget":      room.Budget,
 				"description": room.Description,
 				"date":        room.Date,
+				"members":     h.getMembers(id),
 			},
 		}
 		data, _ := json.Marshal(snapshot)
@@ -70,20 +82,25 @@ func (h *Hub) createRoom(id, name, budget, description, date string, client *Cli
 		return room
 	}
 
-	// Room does not exist, create it
+	// Room does not exist, create it with owner
 	room := &Room{
 		ID:          id,
 		Name:        name,
 		Budget:      budget,
 		Description: description,
 		Date:        date,
+		OwnerID:     userID,
 		clients:     make(map[*Client]bool),
+		memberships: make(map[string]*Membership),
 		entries:     []*PackingEntry{},
 	}
 	h.rooms[id] = room
 	room.clients[client] = true
 
-	// Send snapshot to client
+	// Add creator as member
+	h.addMembership(id, userID, displayName)
+
+	// Send snapshot to client with members
 	snapshot := Envelope{
 		Type: "room_snapshot",
 		Room: id,
@@ -93,6 +110,7 @@ func (h *Hub) createRoom(id, name, budget, description, date string, client *Cli
 			"budget":      room.Budget,
 			"description": room.Description,
 			"date":        room.Date,
+			"members":     h.getMembers(id),
 		},
 	}
 	data, _ := json.Marshal(snapshot)
@@ -106,7 +124,7 @@ func (h *Hub) createRoom(id, name, budget, description, date string, client *Cli
 	return room
 }
 
-func (h *Hub) joinRoom(id string, client *Client) *Room {
+func (h *Hub) joinRoom(id, userID, displayName string, client *Client) *Room {
 	room, ok := h.rooms[id]
 	if !ok {
 		// Room doesn't exist, return nil
@@ -115,7 +133,12 @@ func (h *Hub) joinRoom(id string, client *Client) *Room {
 
 	room.clients[client] = true
 
-	// Send room snapshot to the client
+	// Add user to membership if not already
+	if _, ok := room.memberships[userID]; !ok {
+		h.addMembership(id, userID, displayName)
+	}
+
+	// Send room snapshot to the client with members
 	snapshot := Envelope{
 		Type: "room_snapshot",
 		Room: id,
@@ -125,6 +148,7 @@ func (h *Hub) joinRoom(id string, client *Client) *Room {
 			"budget":      room.Budget,
 			"description": room.Description,
 			"date":        room.Date,
+			"members":     h.getMembers(id),
 		},
 	}
 	data, _ := json.Marshal(snapshot)
@@ -133,6 +157,27 @@ func (h *Hub) joinRoom(id string, client *Client) *Room {
 	default:
 		close(client.send)
 		delete(room.clients, client)
+	}
+
+	// Broadcast user joined message to all clients in room
+	userJoinedMsg := Envelope{
+		Type:   "user_joined",
+		Room:   id,
+		UserID: userID,
+		Payload: map[string]interface{}{
+			"displayName": displayName,
+		},
+	}
+	data, _ = json.Marshal(userJoinedMsg)
+	for c := range room.clients {
+		if c != client { // Don't send back to the joining user
+			select {
+			case c.send <- data:
+			default:
+				close(c.send)
+				delete(room.clients, c)
+			}
+		}
 	}
 
 	return room
@@ -176,4 +221,65 @@ func (h *Hub) Run() {
 			}
 		}
 	}
+}
+
+// addMembership adds a user to a room's membership
+func (h *Hub) addMembership(roomID, userID, displayName string) *Membership {
+	room, ok := h.rooms[roomID]
+	if !ok {
+		return nil
+	}
+
+	membership := &Membership{
+		UserID:      userID,
+		DisplayName: displayName,
+		JoinedAt:    time.Now(),
+	}
+	room.memberships[userID] = membership
+	return membership
+}
+
+// getMembership retrieves a user's membership in a room
+func (h *Hub) getMembership(roomID, userID string) *Membership {
+	room, ok := h.rooms[roomID]
+	if !ok {
+		return nil
+	}
+	return room.memberships[userID]
+}
+
+// getMembers returns all members of a room
+func (h *Hub) getMembers(roomID string) []*Membership {
+	room, ok := h.rooms[roomID]
+	if !ok {
+		return nil
+	}
+
+	members := make([]*Membership, 0, len(room.memberships))
+	for _, m := range room.memberships {
+		members = append(members, m)
+	}
+	return members
+}
+
+// createInviteLink generates a new invite link for a room
+func (h *Hub) createInviteLink(roomID string) *InviteLink {
+	token := generateToken()
+	inviteLink := &InviteLink{
+		Token:     token,
+		TripID:    roomID,
+		CreatedAt: time.Now(),
+		ExpiresAt: time.Now().Add(24 * 7 * time.Hour), // 7 days
+	}
+	h.inviteLinks[token] = inviteLink
+	return inviteLink
+}
+
+// getInviteLink retrieves invite link details
+func (h *Hub) getInviteLink(token string) *InviteLink {
+	invite, ok := h.inviteLinks[token]
+	if !ok || time.Now().After(invite.ExpiresAt) {
+		return nil
+	}
+	return invite
 }

@@ -3,6 +3,8 @@ import type { ClientMessage, ServerMessage } from "@/types/messages";
 
 export function useWebSocket(
   roomId: string,
+  userId: string,
+  displayName: string,
   roomName?: string,
   roomDetails?: { budget?: string; description?: string; date?: string }
 ) {
@@ -17,32 +19,36 @@ export function useWebSocket(
       console.log(`WebSocket connected to room ${roomId}`);
       // Send join or create room message
       if (roomName) {
-        // This is a new room creation
+        // NEW ROOM creation
         const createMessage: ClientMessage = {
           type: "create_room",
           roomId,
           roomName,
+          userId,
+          displayName,
           budget: roomDetails?.budget,
           description: roomDetails?.description,
           date: roomDetails?.date,
         };
         ws.send(JSON.stringify(createMessage));
       } else {
-        // This is joining an existing room
+        // Joining an EXISTING room
         const joinMessage: ClientMessage = {
           type: "join",
-          roomId
+          roomId,
+          userId,
+          displayName,
         };
         ws.send(JSON.stringify(joinMessage));
       }
     };
-    
+
     ws.onmessage = (e) => setMessages(prev => [...prev, JSON.parse(e.data)]);
     ws.onerror = (err) => console.error("WebSocket error", err);
     ws.onclose = () => console.log(`WebSocket closed for room ${roomId}`);
 
-    return () => ws.close(); 
-  }, [roomId, roomName, roomDetails?.budget, roomDetails?.description, roomDetails?.date]);
+    return () => ws.close();
+  }, [roomId, userId, displayName, roomName, roomDetails?.budget, roomDetails?.description, roomDetails?.date]);
 
   const send = useCallback((msg: ClientMessage) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

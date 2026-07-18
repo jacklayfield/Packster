@@ -1,15 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useGuestUser } from "@/hooks/useGuestUser";
 
 type HomeProps = {
-  onJoin: (roomId: string, roomName?: string) => void;
+  onJoin: (roomId: string) => void;
 };
 
 export default function Home({ onJoin }: HomeProps) {
   const [tripName, setTripName] = useState("");
   const [roomId, setRoomId] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [isCreating, setIsCreating] = useState(true);
+  const [showNameInput, setShowNameInput] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{ type: "create" | "join"; value?: string } | null>(null);
+  const { displayName: storedDisplayName, updateDisplayName } = useGuestUser();
   const numBubbles = 50;
 
   const [bubbles, setBubbles] = useState<Array<{
@@ -38,23 +43,74 @@ export default function Home({ onJoin }: HomeProps) {
     };
 
     setBubbles(generateBubbles());
-  }, [numBubbles]);
+
+    // Initialize display name if already set
+    if (storedDisplayName) {
+      setDisplayName(storedDisplayName);
+    }
+  }, [storedDisplayName, numBubbles]);
+
+  const handleProceedWithName = () => {
+    if (displayName.trim()) {
+      updateDisplayName(displayName);
+      setShowNameInput(false);
+
+      // Auto-proceed with the pending action
+      if (pendingAction) {
+        if (pendingAction.type === "create") {
+          const value = tripName.trim();
+          if (value) {
+            if (typeof window !== "undefined") {
+              sessionStorage.setItem("packster_temp_room_name", value);
+            }
+          } else {
+            if (typeof window !== "undefined") {
+              sessionStorage.setItem("packster_temp_room_name", "My Trip");
+            }
+          }
+          onJoin("");
+        } else if (pendingAction.type === "join") {
+          onJoin(pendingAction.value || "");
+        }
+        setPendingAction(null);
+      }
+    }
+  };
 
   const handleCreateRoom = () => {
+    if (!displayName.trim()) {
+      setPendingAction({ type: "create", value: tripName });
+      setShowNameInput(true);
+      return;
+    }
+
     const value = tripName.trim();
     if (value) {
-      onJoin("", value);
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("packster_temp_room_name", value);
+      }
+      onJoin("");
     } else {
-      onJoin("", "My Trip");
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("packster_temp_room_name", "My Trip");
+      }
+      onJoin("");
     }
   };
 
   const handleJoinRoom = () => {
+    if (!displayName.trim()) {
+      const value = roomId.trim();
+      setPendingAction({ type: "join", value });
+      setShowNameInput(true);
+      return;
+    }
+
     const value = roomId.trim();
     if (value) {
       onJoin(value);
     } else {
-      onJoin("demo-room");
+      alert("Please enter a room ID");
     }
   };
 
@@ -63,6 +119,30 @@ export default function Home({ onJoin }: HomeProps) {
       <h1 className="text-4xl font-bold mb-8 text-white drop-shadow-md">
         Packster
       </h1>
+
+      {showNameInput && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+          <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">What's your name?</h2>
+            <p className="text-gray-600 mb-4">Enter your display name for this trip</p>
+            <input
+              type="text"
+              placeholder="Enter your name"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleProceedWithName(); }}
+              autoFocus
+              className="w-full px-4 py-2 rounded-lg border-2 border-blue-300 outline-none focus:border-blue-500 text-black mb-4"
+            />
+            <button
+              onClick={handleProceedWithName}
+              className="w-full px-4 py-2 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-colors"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="relative z-10 flex flex-col items-center">
         {/* Toggle buttons */}

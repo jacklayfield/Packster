@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, use, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import Room from "@/components/Room";
 
 type ParamsType = Promise<{ roomId: string }>;
@@ -14,8 +13,6 @@ type StoredRoomData = {
 };
 
 function RoomPageContent({ roomId }: { roomId: string }) {
-  const searchParams = useSearchParams();
-  const roomNameFromUrl = searchParams.get("room") || undefined;
   const [storedRoomData, setStoredRoomData] = useState<StoredRoomData>({});
 
   useEffect(() => {
@@ -34,7 +31,7 @@ function RoomPageContent({ roomId }: { roomId: string }) {
   return (
     <Room
       roomId={roomId}
-      roomName={roomNameFromUrl || storedRoomData.roomName}
+      roomName={storedRoomData.roomName}
       budget={storedRoomData.budget}
       description={storedRoomData.description}
       date={storedRoomData.date}

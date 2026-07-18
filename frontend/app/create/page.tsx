@@ -1,17 +1,27 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 function CreateRoomForm() {
     const router = useRouter();
-    const searchParams = useSearchParams();
-    const tripName = searchParams.get("room") || searchParams.get("tripName") || "My Trip";
-
+    const [tripName, setTripName] = useState("");
     const [budget, setBudget] = useState("");
     const [description, setDescription] = useState("");
     const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
     const [error, setError] = useState("");
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const tempRoomName = sessionStorage.getItem("packster_temp_room_name");
+            if (tempRoomName) {
+                setTripName(tempRoomName);
+                sessionStorage.removeItem("packster_temp_room_name");
+            } else {
+                setTripName("My Trip");
+            }
+        }
+    }, []);
 
     const handleSubmit = (event: React.FormEvent) => {
         event.preventDefault();
@@ -27,9 +37,6 @@ function CreateRoomForm() {
         }
 
         const roomId = crypto.randomUUID().replace(/-/g, "");
-        const params = new URLSearchParams({
-            room: tripName,
-        });
 
         if (typeof window !== "undefined") {
             window.localStorage.setItem(
@@ -43,7 +50,7 @@ function CreateRoomForm() {
             );
         }
 
-        router.push(`/room/${roomId}?${params.toString()}`);
+        router.push(`/room/${roomId}`);
     };
 
     return (

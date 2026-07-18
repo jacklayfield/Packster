@@ -9,10 +9,13 @@ import (
 )
 
 type Client struct {
-	hub  *Hub
-	conn *websocket.Conn
-	send chan []byte
-	room string
+	hub         *Hub
+	conn        *websocket.Conn
+	send        chan []byte
+	room        string
+	userID      string // UUID of the user
+	displayName string // Trip-specific display name
+	user        *User  // User information
 }
 
 const (
@@ -51,9 +54,20 @@ func (c *Client) readPump() {
 
 		switch msg.Type {
 		case "join":
-			if msg.RoomID != "" {
+			if msg.RoomID != "" && msg.UserID != "" {
+				c.userID = msg.UserID
+				c.displayName = msg.DisplayName
 				c.room = msg.RoomID
-				room := c.hub.joinRoom(msg.RoomID, c)
+
+				// Create or retrieve user
+				if _, ok := c.hub.users[msg.UserID]; !ok {
+					c.hub.users[msg.UserID] = &User{
+						ID:      msg.UserID,
+						IsGuest: true,
+					}
+				}
+
+				room := c.hub.joinRoom(msg.RoomID, msg.UserID, msg.DisplayName, c)
 				if room == nil {
 					log.Printf("Failed to join room %s - room not found", msg.RoomID)
 					// Send error message to client
@@ -69,15 +83,26 @@ func (c *Client) readPump() {
 						close(c.send)
 					}
 				} else {
-					log.Printf("Client joined room %s", msg.RoomID)
+					log.Printf("User %s (%s) joined room %s", msg.UserID, msg.DisplayName, msg.RoomID)
 				}
 			}
 
 		case "create_room":
-			if msg.RoomID != "" && msg.RoomName != "" {
+			if msg.RoomID != "" && msg.RoomName != "" && msg.UserID != "" {
+				c.userID = msg.UserID
+				c.displayName = msg.DisplayName
 				c.room = msg.RoomID
-				c.hub.createRoom(msg.RoomID, msg.RoomName, msg.Budget, msg.Description, msg.Date, c)
-				log.Printf("Client created room %s with name %s", msg.RoomID, msg.RoomName)
+
+				// Create or retrieve user
+				if _, ok := c.hub.users[msg.UserID]; !ok {
+					c.hub.users[msg.UserID] = &User{
+						ID:      msg.UserID,
+						IsGuest: true,
+					}
+				}
+
+				c.hub.createRoom(msg.RoomID, msg.RoomName, msg.Budget, msg.Description, msg.Date, msg.UserID, msg.DisplayName, c)
+				log.Printf("User %s created room %s with name %s", msg.UserID, msg.RoomID, msg.RoomName)
 			}
 
 		case "add_entry":
