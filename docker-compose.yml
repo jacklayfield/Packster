@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: packster
+      POSTGRES_PASSWORD: packster
+      POSTGRES_DB: packster
+    ports:
+      - "5432:5432"
+    volumes:
+      - packster_pg_data:/var/lib/postgresql/data
+
+volumes:
+  packster_pg_data:

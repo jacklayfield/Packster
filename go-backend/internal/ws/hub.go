@@ -1,8 +1,11 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"log"
+
+	"go-backend/internal/db"
 )
 
 type Room struct {
@@ -17,22 +20,97 @@ type Room struct {
 
 type Hub struct {
 	rooms map[string]*Room
+	store *db.Store
 
 	register   chan *Client
 	unregister chan *Client
 	broadcast  chan Envelope
 }
 
-func NewHub() *Hub {
+func NewHub(store *db.Store) *Hub {
 	return &Hub{
 		rooms:      make(map[string]*Room),
+		store:      store,
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		broadcast:  make(chan Envelope),
 	}
 }
 
+func (h *Hub) loadRoomFromStore(id string) *Room {
+	if h.store == nil {
+		return nil
+	}
+
+	found, name, budget, description, date, entries, err := h.store.GetRoom(context.Background(), id)
+	if err != nil {
+		log.Printf("load room %s from database: %v", id, err)
+		return nil
+	}
+	if !found {
+		return nil
+	}
+
+	room := &Room{
+		ID:          id,
+		Name:        name,
+		Budget:      budget,
+		Description: description,
+		Date:        date,
+		clients:     make(map[*Client]bool),
+		entries:     make([]*PackingEntry, 0, len(entries)),
+	}
+	for _, entry := range entries {
+		room.entries = append(room.entries, &PackingEntry{
+			ID:         entry.ID,
+			Name:       entry.Name,
+			Quantity:   entry.Quantity,
+			Cost:       entry.Cost,
+			AssignedTo: entry.AssignedTo,
+		})
+	}
+	h.rooms[id] = room
+	return room
+}
+
+func (h *Hub) persistRoom(room *Room) {
+	if h.store == nil {
+		return
+	}
+
+	if err := h.store.UpsertRoom(
+		context.Background(),
+		room.ID,
+		room.Name,
+		room.Budget,
+		room.Description,
+		room.Date,
+	); err != nil {
+		log.Printf("save room %s to database: %v", room.ID, err)
+	}
+}
+
+func (h *Hub) persistEntry(roomID string, entry *PackingEntry) {
+	if h.store == nil || entry == nil {
+		return
+	}
+
+	if err := h.store.AddEntry(context.Background(), roomID, db.Entry{
+		ID:         entry.ID,
+		Name:       entry.Name,
+		Quantity:   entry.Quantity,
+		Cost:       entry.Cost,
+		AssignedTo: entry.AssignedTo,
+	}); err != nil {
+		log.Printf("save entry %s to database: %v", entry.ID, err)
+	}
+}
+
 func (h *Hub) createRoom(id, name, budget, description, date string, client *Client) *Room {
+	if _, exists := h.rooms[id]; !exists {
+		h.loadRoomFromStore(id)
+	}
+
 	if room, exists := h.rooms[id]; exists {
 		if name != "" {
 			room.Name = name
@@ -46,27 +124,9 @@ func (h *Hub) createRoom(id, name, budget, description, date string, client *Cli
 		if date != "" {
 			room.Date = date
 		}
-		// Room already exists, just join
+		h.persistRoom(room)
 		room.clients[client] = true
-		// Send snapshot to client
-		snapshot := Envelope{
-			Type: "room_snapshot",
-			Room: id,
-			Payload: map[string]interface{}{
-				"entries":     room.entries,
-				"roomName":    room.Name,
-				"budget":      room.Budget,
-				"description": room.Description,
-				"date":        room.Date,
-			},
-		}
-		data, _ := json.Marshal(snapshot)
-		select {
-		case client.send <- data:
-		default:
-			close(client.send)
-			delete(room.clients, client)
-		}
+		h.sendRoomSnapshot(room, client)
 		return room
 	}
 
@@ -81,12 +141,17 @@ func (h *Hub) createRoom(id, name, budget, description, date string, client *Cli
 		entries:     []*PackingEntry{},
 	}
 	h.rooms[id] = room
+	h.persistRoom(room)
 	room.clients[client] = true
 
-	// Send snapshot to client
+	h.sendRoomSnapshot(room, client)
+	return room
+}
+
+func (h *Hub) sendRoomSnapshot(room *Room, client *Client) {
 	snapshot := Envelope{
 		Type: "room_snapshot",
-		Room: id,
+		Room: room.ID,
 		Payload: map[string]interface{}{
 			"entries":     room.entries,
 			"roomName":    room.Name,
@@ -102,39 +167,19 @@ func (h *Hub) createRoom(id, name, budget, description, date string, client *Cli
 		close(client.send)
 		delete(room.clients, client)
 	}
-
-	return room
 }
 
 func (h *Hub) joinRoom(id string, client *Client) *Room {
 	room, ok := h.rooms[id]
 	if !ok {
-		// Room doesn't exist, return nil
-		return nil
+		room = h.loadRoomFromStore(id)
+		if room == nil {
+			return nil
+		}
 	}
 
 	room.clients[client] = true
-
-	// Send room snapshot to the client
-	snapshot := Envelope{
-		Type: "room_snapshot",
-		Room: id,
-		Payload: map[string]interface{}{
-			"entries":     room.entries,
-			"roomName":    room.Name,
-			"budget":      room.Budget,
-			"description": room.Description,
-			"date":        room.Date,
-		},
-	}
-	data, _ := json.Marshal(snapshot)
-	select {
-	case client.send <- data:
-	default:
-		close(client.send)
-		delete(room.clients, client)
-	}
-
+	h.sendRoomSnapshot(room, client)
 	return room
 }
 
@@ -163,6 +208,7 @@ func (h *Hub) Run() {
 
 			if message.Type == "entry_added" && message.Entry != nil {
 				room.entries = append(room.entries, message.Entry)
+				h.persistEntry(message.Room, message.Entry)
 			}
 
 			data, _ := json.Marshal(message)

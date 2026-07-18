@@ -7,7 +7,7 @@ import (
 )
 
 func TestCreateRoomAndAddEntries(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(nil)
 	go hub.Run()
 
 	creator := &Client{send: make(chan []byte, 10)}
