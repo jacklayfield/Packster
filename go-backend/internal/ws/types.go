@@ -13,6 +13,12 @@ type RoomInfo struct {
 	Name string `json:"name"`
 }
 
+type RoomUser struct {
+	ClientID    string `json:"clientId"`
+	DisplayName string `json:"displayName"`
+	Color       string `json:"color"`
+}
+
 type ClientMessage struct {
 	Type        string        `json:"type"`
 	RoomID      string        `json:"roomId,omitempty"`
@@ -20,6 +26,8 @@ type ClientMessage struct {
 	Budget      string        `json:"budget,omitempty"`
 	Description string        `json:"description,omitempty"`
 	Date        string        `json:"date,omitempty"`
+	ClientID    string        `json:"clientId,omitempty"`
+	DisplayName string        `json:"displayName,omitempty"`
 	Entry       *PackingEntry `json:"entry,omitempty"`
 }
 

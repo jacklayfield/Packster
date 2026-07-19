@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useWebSocket } from "@/hooks/useWebSocket";
-import type { ClientMessage, PackingEntry } from "@/types/messages";
+import { getDisplayName, getGuestId, setDisplayName } from "@/lib/guest";
+import OnlineUsers from "@/components/OnlineUsers";
+import type { ClientMessage, PackingEntry, RoomUser } from "@/types/messages";
 
 type Props = {
   roomId: string;
@@ -13,7 +15,16 @@ type Props = {
 };
 
 export default function Room({ roomId, roomName: initialRoomName, budget, description, date }: Props) {
-  const { messages, send } = useWebSocket(roomId, initialRoomName, { budget, description, date });
+  const [clientId, setClientId] = useState("");
+  const [displayName, setDisplayNameState] = useState("");
+  const [nameDraft, setNameDraft] = useState("");
+  const [onlineUsers, setOnlineUsers] = useState<RoomUser[]>([]);
+  const { messages, send } = useWebSocket(
+    roomId,
+    { clientId, displayName },
+    initialRoomName,
+    { budget, description, date }
+  );
   const [entries, setEntries] = useState<PackingEntry[]>([]);
   const [roomName, setRoomName] = useState(initialRoomName || roomId);
   const [tripBudget, setTripBudget] = useState(budget || "0");
@@ -29,6 +40,14 @@ export default function Room({ roomId, roomName: initialRoomName, budget, descri
   const [shareLink, setShareLink] = useState("");
 
   useEffect(() => {
+    setClientId(getGuestId());
+    const savedName = getDisplayName();
+    setDisplayNameState(savedName);
+    setNameDraft(savedName);
+    setAssignedTo(savedName || "Unassigned");
+  }, []);
+
+  useEffect(() => {
     setShareLink(`${window.location.origin}/room/${roomId}`);
     if (budget) {
       setTripBudget(budget);
@@ -40,6 +59,12 @@ export default function Room({ roomId, roomName: initialRoomName, budget, descri
       setTripDate(date);
     }
   }, [roomId, budget, description, date]);
+
+  useEffect(() => {
+    if (displayName) {
+      setAssignedTo((current) => (current === "Unassigned" || current === nameDraft ? displayName : current));
+    }
+  }, [displayName, nameDraft]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareLink);
@@ -68,6 +93,18 @@ export default function Room({ roomId, roomName: initialRoomName, budget, descri
       case "entry_added":
         setEntries((prev) => [...prev, msg.entry]);
         break;
+      case "presence_snapshot":
+        setOnlineUsers(msg.payload.users ?? []);
+        break;
+      case "user_joined":
+        setOnlineUsers((prev) => {
+          const next = prev.filter((user) => user.clientId !== msg.payload.user.clientId);
+          return [...next, msg.payload.user];
+        });
+        break;
+      case "user_left":
+        setOnlineUsers((prev) => prev.filter((user) => user.clientId !== msg.payload.clientId));
+        break;
       case "error":
         console.error(msg.payload);
         break;
@@ -75,7 +112,18 @@ export default function Room({ roomId, roomName: initialRoomName, budget, descri
         const _exhaustiveCheck: never = msg;
         return _exhaustiveCheck;
     }
-  }, [messages, roomId]);
+  }, [messages, roomId, budget, description, date]);
+
+  const handleSaveDisplayName = (event: React.FormEvent) => {
+    event.preventDefault();
+    const trimmed = nameDraft.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    setDisplayName(trimmed);
+    setDisplayNameState(trimmed);
+  };
 
   const handleAddEntry = () => {
     if (!name.trim()) return;
@@ -94,13 +142,49 @@ export default function Room({ roomId, roomName: initialRoomName, budget, descri
     setName("");
     setQuantity(1);
     setCost(0);
-    setAssignedTo("Unassigned");
+    setAssignedTo(displayName || "Unassigned");
   };
+
+  if (!displayName) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <form
+          onSubmit={handleSaveDisplayName}
+          className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl"
+        >
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-500">
+            Welcome to Packster
+          </p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-800">What should we call you?</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            Pick a display name to join this trip. No account needed.
+          </p>
+          <input
+            type="text"
+            value={nameDraft}
+            onChange={(event) => setNameDraft(event.target.value)}
+            placeholder="Your display name"
+            className="mt-6 w-full rounded-2xl border border-slate-200 px-4 py-3 text-base shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+            autoFocus
+          />
+          <button
+            type="submit"
+            disabled={!nameDraft.trim()}
+            className="mt-4 w-full rounded-2xl bg-blue-500 px-5 py-3 font-semibold text-white transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-blue-300"
+          >
+            Join trip
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto p-4 font-sans">
 
       <h2 className="text-3xl font-bold text-center mb-6">{roomName}</h2>
+
+      <OnlineUsers users={onlineUsers} />
 
       {/* Share Link Section */}
       <div className="flex justify-center items-center gap-3 mb-6 text-sm">

@@ -37,6 +37,108 @@ func NewHub(store *db.Store) *Hub {
 	}
 }
 
+func (h *Hub) removeStaleClients(room *Room, clientID string, keep *Client) {
+	for client := range room.clients {
+		if client.id == clientID && client != keep {
+			delete(room.clients, client)
+			close(client.send)
+		}
+	}
+}
+
+func (h *Hub) roomUsers(room *Room) []RoomUser {
+	users := make([]RoomUser, 0, len(room.clients))
+	for client := range room.clients {
+		if client.id == "" || client.displayName == "" {
+			continue
+		}
+		users = append(users, client.roomUser())
+	}
+	return users
+}
+
+func (h *Hub) sendPresenceSnapshot(room *Room, client *Client) {
+	if client.id == "" || client.displayName == "" {
+		return
+	}
+
+	snapshot := Envelope{
+		Type: "presence_snapshot",
+		Room: room.ID,
+		Payload: map[string]interface{}{
+			"users": h.roomUsers(room),
+		},
+	}
+	data, _ := json.Marshal(snapshot)
+	select {
+	case client.send <- data:
+	default:
+		close(client.send)
+		delete(room.clients, client)
+	}
+}
+
+func (h *Hub) broadcastUserJoined(room *Room, joined *Client) {
+	if joined.id == "" || joined.displayName == "" {
+		return
+	}
+
+	message := Envelope{
+		Type: "user_joined",
+		Room: room.ID,
+		Payload: map[string]interface{}{
+			"user": joined.roomUser(),
+		},
+	}
+	data, _ := json.Marshal(message)
+	for client := range room.clients {
+		if client == joined {
+			continue
+		}
+		select {
+		case client.send <- data:
+		default:
+			close(client.send)
+			delete(room.clients, client)
+		}
+	}
+}
+
+func (h *Hub) broadcastUserLeft(room *Room, left *Client) {
+	if left.id == "" {
+		return
+	}
+
+	message := Envelope{
+		Type: "user_left",
+		Room: room.ID,
+		Payload: map[string]interface{}{
+			"clientId": left.id,
+		},
+	}
+	data, _ := json.Marshal(message)
+	for client := range room.clients {
+		select {
+		case client.send <- data:
+		default:
+			close(client.send)
+			delete(room.clients, client)
+		}
+	}
+}
+
+func (h *Hub) announcePresence(room *Room, client *Client) {
+	h.sendPresenceSnapshot(room, client)
+	h.broadcastUserJoined(room, client)
+}
+
+func (h *Hub) addClientToRoom(room *Room, client *Client) {
+	if client.id != "" {
+		h.removeStaleClients(room, client.id, client)
+	}
+	room.clients[client] = true
+}
+
 func (h *Hub) loadRoomFromStore(id string) *Room {
 	if h.store == nil {
 		return nil
@@ -125,8 +227,9 @@ func (h *Hub) createRoom(id, name, budget, description, date string, client *Cli
 			room.Date = date
 		}
 		h.persistRoom(room)
-		room.clients[client] = true
+		h.addClientToRoom(room, client)
 		h.sendRoomSnapshot(room, client)
+		h.announcePresence(room, client)
 		return room
 	}
 
@@ -142,9 +245,10 @@ func (h *Hub) createRoom(id, name, budget, description, date string, client *Cli
 	}
 	h.rooms[id] = room
 	h.persistRoom(room)
-	room.clients[client] = true
+	h.addClientToRoom(room, client)
 
 	h.sendRoomSnapshot(room, client)
+	h.announcePresence(room, client)
 	return room
 }
 
@@ -178,8 +282,9 @@ func (h *Hub) joinRoom(id string, client *Client) *Room {
 		}
 	}
 
-	room.clients[client] = true
+	h.addClientToRoom(room, client)
 	h.sendRoomSnapshot(room, client)
+	h.announcePresence(room, client)
 	return room
 }
 
@@ -195,6 +300,7 @@ func (h *Hub) Run() {
 				if _, exists := room.clients[client]; exists {
 					delete(room.clients, client)
 					close(client.send)
+					h.broadcastUserLeft(room, client)
 				}
 			}
 

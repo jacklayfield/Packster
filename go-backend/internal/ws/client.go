@@ -1,18 +1,55 @@
 package ws
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 type Client struct {
-	hub  *Hub
-	conn *websocket.Conn
-	send chan []byte
-	room string
+	hub         *Hub
+	conn        *websocket.Conn
+	send        chan []byte
+	room        string
+	id          string
+	displayName string
+	color       string
+}
+
+func (c *Client) applyIdentity(clientID, displayName string) {
+	if clientID != "" {
+		c.id = clientID
+	} else if c.id == "" {
+		c.id = newClientID()
+	}
+
+	displayName = strings.TrimSpace(displayName)
+	if displayName != "" {
+		c.displayName = displayName
+	}
+
+	c.color = colorFromClientID(c.id)
+}
+
+func (c *Client) roomUser() RoomUser {
+	return RoomUser{
+		ClientID:    c.id,
+		DisplayName: c.displayName,
+		Color:       c.color,
+	}
+}
+
+func newClientID() string {
+	buf := make([]byte, 16)
+	if _, err := rand.Read(buf); err != nil {
+		return hex.EncodeToString([]byte(time.Now().String()))
+	}
+	return hex.EncodeToString(buf)
 }
 
 const (
@@ -52,6 +89,7 @@ func (c *Client) readPump() {
 		switch msg.Type {
 		case "join":
 			if msg.RoomID != "" {
+				c.applyIdentity(msg.ClientID, msg.DisplayName)
 				c.room = msg.RoomID
 				room := c.hub.joinRoom(msg.RoomID, c)
 				if room == nil {
@@ -75,6 +113,7 @@ func (c *Client) readPump() {
 
 		case "create_room":
 			if msg.RoomID != "" && msg.RoomName != "" {
+				c.applyIdentity(msg.ClientID, msg.DisplayName)
 				c.room = msg.RoomID
 				c.hub.createRoom(msg.RoomID, msg.RoomName, msg.Budget, msg.Description, msg.Date, c)
 				log.Printf("Client created room %s with name %s", msg.RoomID, msg.RoomName)

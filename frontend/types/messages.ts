@@ -11,12 +11,45 @@ export type RoomInfo = {
   name: string;
 };
 
+export type RoomUser = {
+  clientId: string;
+  displayName: string;
+  color: string;
+};
+
 export type ClientMessage =
-  | { type: "create_room"; roomId: string; roomName: string; budget?: string; description?: string; date?: string }
-  | { type: "join"; roomId: string }
+  | {
+      type: "create_room";
+      roomId: string;
+      roomName: string;
+      clientId: string;
+      displayName: string;
+      budget?: string;
+      description?: string;
+      date?: string;
+    }
+  | {
+      type: "join";
+      roomId: string;
+      clientId: string;
+      displayName: string;
+    }
   | { type: "add_entry"; roomId: string; entry: PackingEntry };
 
 export type ServerMessage =
-  | { type: "room_snapshot"; room: string; payload: { entries: PackingEntry[]; roomName: string; budget?: string; description?: string; date?: string } }
+  | {
+      type: "room_snapshot";
+      room: string;
+      payload: {
+        entries: PackingEntry[];
+        roomName: string;
+        budget?: string;
+        description?: string;
+        date?: string;
+      };
+    }
   | { type: "entry_added"; room: string; entry: PackingEntry }
+  | { type: "presence_snapshot"; room: string; payload: { users: RoomUser[] } }
+  | { type: "user_joined"; room: string; payload: { user: RoomUser } }
+  | { type: "user_left"; room: string; payload: { clientId: string } }
   | { type: "error"; room: string; payload: string };

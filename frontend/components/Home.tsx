@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { getDisplayName, setDisplayName } from "@/lib/guest";
 
 type HomeProps = {
   onJoin: (roomId: string, roomName?: string) => void;
@@ -9,6 +10,8 @@ type HomeProps = {
 export default function Home({ onJoin }: HomeProps) {
   const [tripName, setTripName] = useState("");
   const [roomId, setRoomId] = useState("");
+  const [displayName, setDisplayNameState] = useState("");
+  const [nameError, setNameError] = useState("");
   const [isCreating, setIsCreating] = useState(true);
   const numBubbles = 50;
 
@@ -19,6 +22,10 @@ export default function Home({ onJoin }: HomeProps) {
     duration: number;
     delay: number;
   }>>([]);
+
+  useEffect(() => {
+    setDisplayNameState(getDisplayName());
+  }, []);
 
   useEffect(() => {
     // Generate bubbles only on client side to avoid hydration mismatch
@@ -40,7 +47,24 @@ export default function Home({ onJoin }: HomeProps) {
     setBubbles(generateBubbles());
   }, [numBubbles]);
 
+  const persistDisplayName = () => {
+    const trimmed = displayName.trim();
+    if (!trimmed) {
+      setNameError("Enter a display name before continuing.");
+      return false;
+    }
+
+    setDisplayName(trimmed);
+    setDisplayNameState(trimmed);
+    setNameError("");
+    return true;
+  };
+
   const handleCreateRoom = () => {
+    if (!persistDisplayName()) {
+      return;
+    }
+
     const value = tripName.trim();
     if (value) {
       onJoin("", value);
@@ -50,6 +74,10 @@ export default function Home({ onJoin }: HomeProps) {
   };
 
   const handleJoinRoom = () => {
+    if (!persistDisplayName()) {
+      return;
+    }
+
     const value = roomId.trim();
     if (value) {
       onJoin(value);
@@ -65,6 +93,27 @@ export default function Home({ onJoin }: HomeProps) {
       </h1>
 
       <div className="relative z-10 flex flex-col items-center">
+        <div className="mb-6 w-full max-w-sm">
+          <label className="mb-2 block text-sm font-semibold text-white drop-shadow">
+            Display name
+          </label>
+          <input
+            type="text"
+            placeholder="What should we call you?"
+            value={displayName}
+            onChange={(event) => {
+              setDisplayNameState(event.target.value);
+              if (nameError) {
+                setNameError("");
+              }
+            }}
+            className="w-full rounded-xl border-none px-4 py-2 shadow-md outline-none text-black"
+          />
+          {nameError ? (
+            <p className="mt-2 text-sm font-medium text-rose-100">{nameError}</p>
+          ) : null}
+        </div>
+
         {/* Toggle buttons */}
         <div className="flex gap-2 mb-6 bg-white/20 rounded-xl p-1">
           <button
