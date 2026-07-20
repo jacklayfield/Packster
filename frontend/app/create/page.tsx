@@ -12,8 +12,9 @@ function CreateRoomForm() {
     const [description, setDescription] = useState("");
     const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
     const [error, setError] = useState("");
+    const [isCreating, setIsCreating] = useState(false);
 
-    const handleSubmit = (event: React.FormEvent) => {
+    const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
 
         if (!budget.trim()) {
@@ -26,14 +27,13 @@ function CreateRoomForm() {
             return;
         }
 
+        setIsCreating(true);
         const roomId = crypto.randomUUID().replace(/-/g, "");
-        const params = new URLSearchParams({
-            room: tripName,
-        });
 
+        // Store creation data in sessionStorage temporarily for the room page
         if (typeof window !== "undefined") {
-            window.localStorage.setItem(
-                `packster-room:${roomId}`,
+            window.sessionStorage.setItem(
+                `packster-create:${roomId}`,
                 JSON.stringify({
                     roomName: tripName,
                     budget: budget.trim(),
@@ -43,7 +43,8 @@ function CreateRoomForm() {
             );
         }
 
-        router.push(`/room/${roomId}?${params.toString()}`);
+        // Redirect to room page to create and display
+        router.push(`/room/${roomId}`);
     };
 
     return (

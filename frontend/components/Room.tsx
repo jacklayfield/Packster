@@ -8,28 +8,25 @@ import type { ClientMessage, PackingEntry, RoomUser } from "@/types/messages";
 
 type Props = {
   roomId: string;
-  roomName?: string;
-  budget?: string;
-  description?: string;
-  date?: string;
 };
 
-export default function Room({ roomId, roomName: initialRoomName, budget, description, date }: Props) {
+export default function Room({ roomId }: Props) {
   const [clientId, setClientId] = useState("");
   const [displayName, setDisplayNameState] = useState("");
   const [nameDraft, setNameDraft] = useState("");
   const [onlineUsers, setOnlineUsers] = useState<RoomUser[]>([]);
+  const [snapshotReceived, setSnapshotReceived] = useState(false);
+  const [processedMessageCount, setProcessedMessageCount] = useState(0);
+
   const { messages, send } = useWebSocket(
     roomId,
-    { clientId, displayName },
-    initialRoomName,
-    { budget, description, date }
+    { clientId, displayName }
   );
   const [entries, setEntries] = useState<PackingEntry[]>([]);
-  const [roomName, setRoomName] = useState(initialRoomName || roomId);
-  const [tripBudget, setTripBudget] = useState(budget || "0");
-  const [tripDescription, setTripDescription] = useState(description || "Add trip details here");
-  const [tripDate, setTripDate] = useState(date || new Date().toLocaleDateString());
+  const [roomName, setRoomName] = useState(roomId);
+  const [tripBudget, setTripBudget] = useState("0");
+  const [tripDescription, setTripDescription] = useState("Add trip details here");
+  const [tripDate, setTripDate] = useState(new Date().toLocaleDateString());
 
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState<number | "">("");
@@ -39,6 +36,7 @@ export default function Room({ roomId, roomName: initialRoomName, budget, descri
   const [copiedId, setCopiedId] = useState(false);
   const [shareLink, setShareLink] = useState("");
 
+  // Initialize client-only state after hydration
   useEffect(() => {
     setClientId(getGuestId());
     const savedName = getDisplayName();
@@ -49,16 +47,7 @@ export default function Room({ roomId, roomName: initialRoomName, budget, descri
 
   useEffect(() => {
     setShareLink(`${window.location.origin}/room/${roomId}`);
-    if (budget) {
-      setTripBudget(budget);
-    }
-    if (description) {
-      setTripDescription(description);
-    }
-    if (date) {
-      setTripDate(date);
-    }
-  }, [roomId, budget, description, date]);
+  }, [roomId]);
 
   useEffect(() => {
     if (displayName) {
@@ -79,40 +68,49 @@ export default function Room({ roomId, roomName: initialRoomName, budget, descri
   };
 
   useEffect(() => {
-    if (messages.length === 0) return;
-    const msg = messages[messages.length - 1];
+    console.log("Messages effect running. Messages count:", messages.length, "Processed:", processedMessageCount);
+    
+    // Process all new messages since last time
+    for (let i = processedMessageCount; i < messages.length; i++) {
+      const msg = messages[i];
+      console.log("Processing message type:", msg.type);
 
-    switch (msg.type) {
-      case "room_snapshot":
-        setEntries(msg.payload.entries ?? []);
-        setRoomName(msg.payload.roomName ?? roomId);
-        setTripBudget(msg.payload.budget || budget || "0");
-        setTripDescription(msg.payload.description || description || "Add trip details here");
-        setTripDate(msg.payload.date || date || new Date().toLocaleDateString());
-        break;
-      case "entry_added":
-        setEntries((prev) => [...prev, msg.entry]);
-        break;
-      case "presence_snapshot":
-        setOnlineUsers(msg.payload.users ?? []);
-        break;
-      case "user_joined":
-        setOnlineUsers((prev) => {
-          const next = prev.filter((user) => user.clientId !== msg.payload.user.clientId);
-          return [...next, msg.payload.user];
-        });
-        break;
-      case "user_left":
-        setOnlineUsers((prev) => prev.filter((user) => user.clientId !== msg.payload.clientId));
-        break;
-      case "error":
-        console.error(msg.payload);
-        break;
-      default:
-        const _exhaustiveCheck: never = msg;
-        return _exhaustiveCheck;
+      switch (msg.type) {
+        case "room_snapshot":
+          console.log("Received room snapshot", msg.payload.entries);
+          setSnapshotReceived(true);
+          setEntries(msg.payload.entries ?? []);
+          setRoomName(msg.payload.roomName || roomId);
+          setTripBudget(msg.payload.budget || "0");
+          setTripDescription(msg.payload.description || "Add trip details here");
+          setTripDate(msg.payload.date || new Date().toLocaleDateString());
+          break;
+        case "entry_added":
+          setEntries((prev) => [...prev, msg.entry]);
+          break;
+        case "presence_snapshot":
+          setOnlineUsers(msg.payload.users ?? []);
+          break;
+        case "user_joined":
+          setOnlineUsers((prev) => {
+            const next = prev.filter((user) => user.clientId !== msg.payload.user.clientId);
+            return [...next, msg.payload.user];
+          });
+          break;
+        case "user_left":
+          setOnlineUsers((prev) => prev.filter((user) => user.clientId !== msg.payload.clientId));
+          break;
+        case "error":
+          console.error(msg.payload);
+          break;
+      }
     }
-  }, [messages, roomId, budget, description, date]);
+    
+    // Mark all current messages as processed
+    if (messages.length > processedMessageCount) {
+      setProcessedMessageCount(messages.length);
+    }
+  }, [messages, processedMessageCount, roomId]);
 
   const handleSaveDisplayName = (event: React.FormEvent) => {
     event.preventDefault();
@@ -175,6 +173,17 @@ export default function Room({ roomId, roomName: initialRoomName, budget, descri
             Join trip
           </button>
         </form>
+      </div>
+    );
+  }
+
+  if (!snapshotReceived) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <div className="text-center">
+          <div className="mb-4 inline-block h-12 w-12 animate-spin rounded-full border-4 border-slate-300 border-t-blue-500"></div>
+          <p className="text-lg font-semibold text-slate-700">Loading room...</p>
+        </div>
       </div>
     );
   }

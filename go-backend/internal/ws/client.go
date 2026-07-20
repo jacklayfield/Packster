@@ -148,10 +148,12 @@ func (c *Client) writePump() {
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
+			log.Printf("writePump: sending message to client %s", c.id)
 			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
-				log.Println("write error:", err)
+				log.Printf("write error for client %s: %v", c.id, err)
 				return
 			}
+			log.Printf("writePump: message sent successfully")
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {

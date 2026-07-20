@@ -265,24 +265,32 @@ func (h *Hub) sendRoomSnapshot(room *Room, client *Client) {
 		},
 	}
 	data, _ := json.Marshal(snapshot)
+	log.Printf("Sending room_snapshot for room %s to client %s", room.ID, client.id)
 	select {
 	case client.send <- data:
+		log.Printf("Successfully sent room_snapshot")
 	default:
+		log.Printf("ERROR: Failed to send room_snapshot - channel full or closed")
 		close(client.send)
 		delete(room.clients, client)
 	}
 }
 
 func (h *Hub) joinRoom(id string, client *Client) *Room {
+	log.Printf("joinRoom called for room %s", id)
 	room, ok := h.rooms[id]
 	if !ok {
+		log.Printf("Room %s not in memory, loading from store", id)
 		room = h.loadRoomFromStore(id)
 		if room == nil {
+			log.Printf("Room %s not found in store", id)
 			return nil
 		}
+		log.Printf("Loaded room %s from store", id)
 	}
 
 	h.addClientToRoom(room, client)
+	log.Printf("Client %s added to room %s", client.id, id)
 	h.sendRoomSnapshot(room, client)
 	h.announcePresence(room, client)
 	return room
