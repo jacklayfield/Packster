@@ -321,7 +321,17 @@ func (h *Hub) Run() {
 			}
 
 			if message.Type == "entry_added" && message.Entry != nil {
-				room.entries = append(room.entries, message.Entry)
+				updated := false
+				for i, current := range room.entries {
+					if current.ID == message.Entry.ID {
+						room.entries[i] = message.Entry
+						updated = true
+						break
+					}
+				}
+				if !updated {
+					room.entries = append(room.entries, message.Entry)
+				}
 				h.persistEntry(message.Room, message.Entry)
 			}
 

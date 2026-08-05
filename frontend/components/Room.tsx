@@ -31,7 +31,6 @@ export default function Room({ roomId }: Props) {
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState<number | "">("");
   const [cost, setCost] = useState<number | "">("");
-  const [assignedTo, setAssignedTo] = useState("Unassigned");
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const [shareLink, setShareLink] = useState("");
@@ -42,18 +41,11 @@ export default function Room({ roomId }: Props) {
     const savedName = getDisplayName();
     setDisplayNameState(savedName);
     setNameDraft(savedName);
-    setAssignedTo(savedName || "Unassigned");
   }, []);
 
   useEffect(() => {
     setShareLink(`${window.location.origin}/room/${roomId}`);
   }, [roomId]);
-
-  useEffect(() => {
-    if (displayName) {
-      setAssignedTo((current) => (current === "Unassigned" || current === nameDraft ? displayName : current));
-    }
-  }, [displayName, nameDraft]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareLink);
@@ -65,6 +57,18 @@ export default function Room({ roomId }: Props) {
     navigator.clipboard.writeText(roomId);
     setCopiedId(true);
     setTimeout(() => setCopiedId(false), 2000);
+  };
+
+  const handleClaimEntry = (entry: PackingEntry) => {
+    if (!displayName || entry.assignedTo !== "Unassigned") return;
+
+    const updatedEntry: PackingEntry = {
+      ...entry,
+      assignedTo: displayName,
+    };
+
+    const message: ClientMessage = { type: "add_entry", roomId, entry: updatedEntry };
+    send(message);
   };
 
   useEffect(() => {
@@ -86,7 +90,16 @@ export default function Room({ roomId }: Props) {
           setTripDate(msg.payload.date || new Date().toLocaleDateString());
           break;
         case "entry_added":
-          setEntries((prev) => [...prev, msg.entry]);
+          setEntries((prev) => {
+            const existingIndex = prev.findIndex((item) => item.id === msg.entry.id);
+            if (existingIndex === -1) {
+              return [...prev, msg.entry];
+            }
+
+            const next = [...prev];
+            next[existingIndex] = msg.entry;
+            return next;
+          });
           break;
         case "presence_snapshot":
           setOnlineUsers(msg.payload.users ?? []);
@@ -131,7 +144,7 @@ export default function Room({ roomId }: Props) {
       name,
       quantity: quantity === "" ? 1 : quantity,
       cost: cost === "" ? 0 : cost,
-      assignedTo,
+      assignedTo: "Unassigned",
     };
 
     const message: ClientMessage = { type: "add_entry", roomId, entry };
@@ -140,7 +153,6 @@ export default function Room({ roomId }: Props) {
     setName("");
     setQuantity(1);
     setCost(0);
-    setAssignedTo(displayName || "Unassigned");
   };
 
   if (!displayName) {
@@ -268,7 +280,17 @@ export default function Room({ roomId }: Props) {
                   ${entry.cost.toFixed(2)}
                 </span>
                 <span className="w-1/4 text-right italic">
-                  {entry.assignedTo}
+                  {entry.assignedTo === "Unassigned" ? (
+                    <button
+                      type="button"
+                      onClick={() => handleClaimEntry(entry)}
+                      className="rounded-xl bg-blue-500 px-3 py-1 text-sm font-semibold text-white hover:bg-blue-600 transition"
+                    >
+                      Claim
+                    </button>
+                  ) : (
+                    entry.assignedTo
+                  )}
                 </span>
               </li>
             ))}
@@ -312,13 +334,6 @@ export default function Room({ roomId }: Props) {
               setCost(e.target.value === "" ? "" : Number(e.target.value))
             }
             className="w-48 px-3 py-2 rounded-xl border border-gray-300 shadow-sm"
-          />
-          <input
-            type="text"
-            value={assignedTo}
-            onChange={(e) => setAssignedTo(e.target.value)}
-            placeholder="Assigned to"
-            className="flex-1 px-3 py-2 rounded-xl border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
         </div>
 
