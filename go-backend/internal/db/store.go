@@ -75,3 +75,11 @@ ON CONFLICT (id) DO UPDATE SET
 `, entry.ID, roomID, entry.Name, entry.Quantity, entry.Cost, entry.AssignedTo)
 	return err
 }
+
+func (s *Store) DeleteEntry(ctx context.Context, roomID string, entryID string) error {
+	_, err := s.pool.Exec(ctx, `
+DELETE FROM packing_entries
+WHERE id = $1 AND room_id = $2
+`, entryID, roomID)
+	return err
+}

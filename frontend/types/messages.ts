@@ -19,36 +19,38 @@ export type RoomUser = {
 
 export type ClientMessage =
   | {
-      type: "create_room";
-      roomId: string;
-      roomName: string;
-      clientId: string;
-      displayName: string;
-      budget?: string;
-      description?: string;
-      date?: string;
-    }
+    type: "create_room";
+    roomId: string;
+    roomName: string;
+    clientId: string;
+    displayName: string;
+    budget?: string;
+    description?: string;
+    date?: string;
+  }
   | {
-      type: "join";
-      roomId: string;
-      clientId: string;
-      displayName: string;
-    }
-  | { type: "add_entry"; roomId: string; entry: PackingEntry };
+    type: "join";
+    roomId: string;
+    clientId: string;
+    displayName: string;
+  }
+  | { type: "add_entry"; roomId: string; entry: PackingEntry }
+  | { type: "delete_entry"; roomId: string; entryId: string };
 
 export type ServerMessage =
   | {
-      type: "room_snapshot";
-      room: string;
-      payload: {
-        entries: PackingEntry[];
-        roomName: string;
-        budget?: string;
-        description?: string;
-        date?: string;
-      };
-    }
+    type: "room_snapshot";
+    room: string;
+    payload: {
+      entries: PackingEntry[];
+      roomName: string;
+      budget?: string;
+      description?: string;
+      date?: string;
+    };
+  }
   | { type: "entry_added"; room: string; entry: PackingEntry }
+  | { type: "entry_deleted"; room: string; entryId: string }
   | { type: "presence_snapshot"; room: string; payload: { users: RoomUser[] } }
   | { type: "user_joined"; room: string; payload: { user: RoomUser } }
   | { type: "user_left"; room: string; payload: { clientId: string } }

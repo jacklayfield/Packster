@@ -5,6 +5,7 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { getDisplayName, getGuestId, setDisplayName } from "@/lib/guest";
 import OnlineUsers from "@/components/OnlineUsers";
 import type { ClientMessage, PackingEntry, RoomUser } from "@/types/messages";
+import { FiTrash2 } from "react-icons/fi";
 
 type Props = {
   roomId: string;
@@ -34,6 +35,8 @@ export default function Room({ roomId }: Props) {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const [shareLink, setShareLink] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingEntry, setDeletingEntry] = useState<PackingEntry | null>(null);
 
   // Initialize client-only state after hydration
   useEffect(() => {
@@ -73,7 +76,7 @@ export default function Room({ roomId }: Props) {
 
   useEffect(() => {
     console.log("Messages effect running. Messages count:", messages.length, "Processed:", processedMessageCount);
-    
+
     // Process all new messages since last time
     for (let i = processedMessageCount; i < messages.length; i++) {
       const msg = messages[i];
@@ -101,6 +104,14 @@ export default function Room({ roomId }: Props) {
             return next;
           });
           break;
+        case "entry_deleted":
+          // Server informs us an entry was deleted; remove from local state
+          const maybeAny = msg as any;
+          const entryId = maybeAny.entryId ?? maybeAny.entry?.id ?? maybeAny.payload?.entryId;
+          if (entryId) {
+            setEntries((prev) => prev.filter((e) => e.id !== entryId));
+          }
+          break;
         case "presence_snapshot":
           setOnlineUsers(msg.payload.users ?? []);
           break;
@@ -118,7 +129,7 @@ export default function Room({ roomId }: Props) {
           break;
       }
     }
-    
+
     // Mark all current messages as processed
     if (messages.length > processedMessageCount) {
       setProcessedMessageCount(messages.length);
@@ -291,12 +302,51 @@ export default function Room({ roomId }: Props) {
                   ) : (
                     entry.assignedTo
                   )}
+                  <button
+                    type="button"
+                    onClick={() => { setDeletingEntry(entry); setShowDeleteModal(true); }}
+                    className="ml-3 inline-flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 text-red-600 p-2 text-sm"
+                    title="Delete item"
+                  >
+                    <FiTrash2 className="h-4 w-4" />
+                  </button>
                 </span>
               </li>
             ))}
           </ul>
         )}
       </div>
+
+      {showDeleteModal && deletingEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => { setShowDeleteModal(false); setDeletingEntry(null); }} />
+          <div className="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
+            <h3 className="text-lg font-semibold">Delete item</h3>
+            <p className="mt-2 text-sm text-gray-600">Are you sure you want to delete "{deletingEntry.name}"?</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => { setShowDeleteModal(false); setDeletingEntry(null); }}
+                className="px-4 py-2 rounded-xl bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!deletingEntry) return;
+                  // Optimistically remove locally
+                  setEntries((prev) => prev.filter((e) => e.id !== deletingEntry.id));
+                  send({ type: "delete_entry", roomId, entryId: deletingEntry.id });
+                  setShowDeleteModal(false);
+                  setDeletingEntry(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-red-600 text-white"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form
         className="flex flex-col mt-6 gap-3"

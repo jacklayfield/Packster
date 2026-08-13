@@ -128,6 +128,22 @@ func (c *Client) readPump() {
 				}
 			}
 
+		case "delete_entry":
+			// Allow either Entry with ID set, or EntryID field
+			var id string
+			if msg.Entry != nil && msg.Entry.ID != "" {
+				id = msg.Entry.ID
+			} else if msg.EntryID != "" {
+				id = msg.EntryID
+			}
+			if id != "" {
+				c.hub.broadcast <- Envelope{
+					Type:  "entry_deleted",
+					Room:  c.room,
+					Entry: &PackingEntry{ID: id},
+				}
+			}
+
 		default:
 			log.Printf("Unknown message type: %s", msg.Type)
 		}

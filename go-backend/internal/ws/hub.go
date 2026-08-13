@@ -333,6 +333,23 @@ func (h *Hub) Run() {
 					room.entries = append(room.entries, message.Entry)
 				}
 				h.persistEntry(message.Room, message.Entry)
+			} else if message.Type == "entry_deleted" && message.Entry != nil {
+				// Remove entry from room in memory
+				entryID := message.Entry.ID
+				newEntries := make([]*PackingEntry, 0, len(room.entries))
+				for _, e := range room.entries {
+					if e.ID == entryID {
+						continue
+					}
+					newEntries = append(newEntries, e)
+				}
+				room.entries = newEntries
+				// Persist deletion in store
+				if h.store != nil {
+					if err := h.store.DeleteEntry(context.Background(), message.Room, entryID); err != nil {
+						log.Printf("delete entry %s from db: %v", entryID, err)
+					}
+				}
 			}
 
 			data, _ := json.Marshal(message)

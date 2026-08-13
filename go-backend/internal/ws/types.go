@@ -29,6 +29,7 @@ type ClientMessage struct {
 	ClientID    string        `json:"clientId,omitempty"`
 	DisplayName string        `json:"displayName,omitempty"`
 	Entry       *PackingEntry `json:"entry,omitempty"`
+	EntryID     string        `json:"entryId,omitempty"`
 }
 
 type Envelope struct {
