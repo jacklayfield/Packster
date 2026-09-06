@@ -74,6 +74,18 @@ export default function Room({ roomId }: Props) {
     send(message);
   };
 
+  const handleUnclaimEntry = (entry: PackingEntry) => {
+    if (!displayName || entry.assignedTo !== displayName) return;
+
+    const updatedEntry: PackingEntry = {
+      ...entry,
+      assignedTo: "Unassigned",
+    };
+
+    const message: ClientMessage = { type: "add_entry", roomId, entry: updatedEntry };
+    send(message);
+  };
+
   useEffect(() => {
     console.log("Messages effect running. Messages count:", messages.length, "Processed:", processedMessageCount);
 
@@ -300,7 +312,18 @@ export default function Room({ roomId }: Props) {
                       Claim
                     </button>
                   ) : (
-                    entry.assignedTo
+                    <>
+                      {entry.assignedTo}
+                      {entry.assignedTo === displayName && (
+                        <button
+                          type="button"
+                          onClick={() => handleUnclaimEntry(entry)}
+                          className="ml-3 rounded-xl bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-700 hover:bg-gray-200 transition"
+                        >
+                          Unclaim
+                        </button>
+                      )}
+                    </>
                   )}
                   <button
                     type="button"
