@@ -5,7 +5,7 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { getDisplayName, getGuestId, setDisplayName } from "@/lib/guest";
 import OnlineUsers from "@/components/OnlineUsers";
 import type { ClientMessage, PackingEntry, RoomUser } from "@/types/messages";
-import { FiTrash2 } from "react-icons/fi";
+import { FiGrid, FiList, FiTrash2 } from "react-icons/fi";
 
 type Props = {
   roomId: string;
@@ -37,6 +37,7 @@ export default function Room({ roomId }: Props) {
   const [shareLink, setShareLink] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingEntry, setDeletingEntry] = useState<PackingEntry | null>(null);
+  const [compactView, setCompactView] = useState(false);
 
   // Initialize client-only state after hydration
   useEffect(() => {
@@ -277,12 +278,39 @@ export default function Room({ roomId }: Props) {
         </div>
       </div>
 
-      {/* Header Row */}
-      <div className="flex justify-between text-gray-700 font-semibold mb-2 px-4">
-        <span className="w-1/4">Item Name</span>
-        <span className="w-1/4 text-center">Quantity</span>
-        <span className="w-1/4 text-center">Cost</span>
-        <span className="w-1/4 text-right">Assigned To</span>
+      <div className="mb-2 flex items-center justify-between px-4">
+        {!compactView ? (
+          <div className="flex w-full justify-between font-semibold text-gray-700">
+            <span className="w-1/4">Item Name</span>
+            <span className="w-1/4 text-center">Quantity</span>
+            <span className="w-1/4 text-center">Cost</span>
+            <span className="w-1/4 text-right">Assigned To</span>
+          </div>
+        ) : (
+          <span className="font-semibold text-gray-700">Items</span>
+        )}
+        <div className="ml-4 flex shrink-0 rounded-lg border border-gray-200 bg-gray-50 p-1" aria-label="Item view">
+          <button
+            type="button"
+            onClick={() => setCompactView(false)}
+            className={`rounded-md p-2 transition ${!compactView ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            aria-label="Show items as a list"
+            aria-pressed={!compactView}
+            title="List view"
+          >
+            <FiList className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setCompactView(true)}
+            className={`rounded-md p-2 transition ${compactView ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            aria-label="Show items in a compact grid"
+            aria-pressed={compactView}
+            title="Compact grid view"
+          >
+            <FiGrid className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       <div className="max-h-[60vh] overflow-y-auto">
@@ -291,23 +319,29 @@ export default function Room({ roomId }: Props) {
             No items created yet
           </div>
         ) : (
-          <ul className="space-y-4">
+          <ul className={compactView ? "grid grid-cols-1 gap-2 sm:grid-cols-2" : "space-y-4"}>
             {entries.map((entry) => (
               <li
                 key={entry.id}
-                className="flex justify-between bg-white rounded-xl shadow-md p-4"
+                className={compactView
+                  ? "flex min-h-14 items-center justify-between gap-3 rounded-lg border border-gray-100 bg-white px-3 py-2 shadow-sm"
+                  : "flex justify-between rounded-xl bg-white p-4 shadow-md"}
               >
-                <span className="w-1/4 font-semibold">{entry.name}</span>
-                <span className="w-1/4 text-center">{entry.quantity} pcs</span>
-                <span className="w-1/4 text-center">
+                <span className={compactView ? "min-w-0 flex-1 truncate font-semibold" : "w-1/4 font-semibold"}>
+                  {entry.name}
+                </span>
+                <span className={compactView ? "shrink-0 text-xs text-gray-500" : "w-1/4 text-center"}>
+                  {entry.quantity} pcs
+                </span>
+                <span className={compactView ? "shrink-0 text-xs text-gray-600" : "w-1/4 text-center"}>
                   ${entry.cost.toFixed(2)}
                 </span>
-                <span className="w-1/4 text-right italic">
+                <span className={compactView ? "flex shrink-0 items-center text-right text-sm italic" : "w-1/4 text-right italic"}>
                   {entry.assignedTo === "Unassigned" ? (
                     <button
                       type="button"
                       onClick={() => handleClaimEntry(entry)}
-                      className="rounded-xl bg-blue-500 px-3 py-1 text-sm font-semibold text-white hover:bg-blue-600 transition"
+                      className="rounded-lg bg-blue-500 px-2 py-1 text-xs font-semibold text-white transition hover:bg-blue-600"
                     >
                       Claim
                     </button>
@@ -318,7 +352,7 @@ export default function Room({ roomId }: Props) {
                         <button
                           type="button"
                           onClick={() => handleUnclaimEntry(entry)}
-                          className="ml-3 rounded-xl bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-700 hover:bg-gray-200 transition"
+                          className="ml-2 rounded-lg bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700 transition hover:bg-gray-200"
                         >
                           Unclaim
                         </button>
@@ -328,7 +362,7 @@ export default function Room({ roomId }: Props) {
                   <button
                     type="button"
                     onClick={() => { setDeletingEntry(entry); setShowDeleteModal(true); }}
-                    className="ml-3 inline-flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 text-red-600 p-2 text-sm"
+                    className="ml-2 inline-flex items-center justify-center rounded-full bg-red-50 p-2 text-sm text-red-600 hover:bg-red-100"
                     title="Delete item"
                   >
                     <FiTrash2 className="h-4 w-4" />
