@@ -333,9 +333,9 @@ func (h *Hub) Run() {
 					room.entries = append(room.entries, message.Entry)
 				}
 				h.persistEntry(message.Room, message.Entry)
-			} else if message.Type == "entry_deleted" && message.Entry != nil {
+			} else if message.Type == "entry_deleted" && message.EntryID != "" {
 				// Remove entry from room in memory
-				entryID := message.Entry.ID
+				entryID := message.EntryID
 				newEntries := make([]*PackingEntry, 0, len(room.entries))
 				for _, e := range room.entries {
 					if e.ID == entryID {

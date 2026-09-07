@@ -138,9 +138,9 @@ func (c *Client) readPump() {
 			}
 			if id != "" {
 				c.hub.broadcast <- Envelope{
-					Type:  "entry_deleted",
-					Room:  c.room,
-					Entry: &PackingEntry{ID: id},
+					Type:    "entry_deleted",
+					Room:    c.room,
+					EntryID: id,
 				}
 			}
 

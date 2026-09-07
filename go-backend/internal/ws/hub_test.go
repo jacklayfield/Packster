@@ -75,4 +75,25 @@ func TestCreateRoomAndAddEntries(t *testing.T) {
 	if len(room.entries) != len(entries) {
 		t.Fatalf("expected %d entries in room, got %d", len(entries), len(room.entries))
 	}
+
+	hub.broadcast <- Envelope{Type: "entry_deleted", Room: room.ID, EntryID: "2"}
+	select {
+	case message := <-creator.send:
+		var envelope Envelope
+		if err := json.Unmarshal(message, &envelope); err != nil {
+			t.Fatalf("failed to unmarshal delete event: %v", err)
+		}
+		if envelope.Type != "entry_deleted" {
+			t.Fatalf("expected entry_deleted event, got %s", envelope.Type)
+		}
+		if envelope.EntryID != "2" {
+			t.Fatalf("expected deleted entry ID 2, got %q", envelope.EntryID)
+		}
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("expected delete event to be broadcast")
+	}
+
+	if len(room.entries) != len(entries)-1 {
+		t.Fatalf("expected %d entries after deletion, got %d", len(entries)-1, len(room.entries))
+	}
 }

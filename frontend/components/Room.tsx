@@ -1,22 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { getDisplayName, getGuestId, setDisplayName } from "@/lib/guest";
 import OnlineUsers from "@/components/OnlineUsers";
 import type { ClientMessage, PackingEntry, RoomUser } from "@/types/messages";
-import { FiGrid, FiList, FiTrash2 } from "react-icons/fi";
+import { FiDollarSign, FiGrid, FiList, FiTrash2, FiUser } from "react-icons/fi";
 
 type Props = {
   roomId: string;
 };
 
 export default function Room({ roomId }: Props) {
+  const router = useRouter();
   const [clientId, setClientId] = useState("");
   const [displayName, setDisplayNameState] = useState("");
   const [nameDraft, setNameDraft] = useState("");
   const [onlineUsers, setOnlineUsers] = useState<RoomUser[]>([]);
   const [snapshotReceived, setSnapshotReceived] = useState(false);
+  const [roomError, setRoomError] = useState("");
   const [processedMessageCount, setProcessedMessageCount] = useState(0);
 
   const { messages, send } = useWebSocket(
@@ -119,11 +122,7 @@ export default function Room({ roomId }: Props) {
           break;
         case "entry_deleted":
           // Server informs us an entry was deleted; remove from local state
-          const maybeAny = msg as any;
-          const entryId = maybeAny.entryId ?? maybeAny.entry?.id ?? maybeAny.payload?.entryId;
-          if (entryId) {
-            setEntries((prev) => prev.filter((e) => e.id !== entryId));
-          }
+          setEntries((prev) => prev.filter((entry) => entry.id !== msg.entryId));
           break;
         case "presence_snapshot":
           setOnlineUsers(msg.payload.users ?? []);
@@ -139,6 +138,7 @@ export default function Room({ roomId }: Props) {
           break;
         case "error":
           console.error(msg.payload);
+          setRoomError(msg.payload);
           break;
       }
     }
@@ -213,6 +213,24 @@ export default function Room({ roomId }: Props) {
     );
   }
 
+  if (roomError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-xl">
+          <h1 className="text-2xl font-bold text-slate-800">Room not found</h1>
+          <p className="mt-2 text-slate-600">This room may have been deleted or the link may be incorrect.</p>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="mt-6 rounded-xl bg-blue-500 px-5 py-3 font-semibold text-white transition hover:bg-blue-600"
+          >
+            Back home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!snapshotReceived) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
@@ -227,7 +245,25 @@ export default function Room({ roomId }: Props) {
   return (
     <div className="max-w-5xl mx-auto p-4 font-sans">
 
-      <h2 className="text-3xl font-bold text-center mb-6">{roomName}</h2>
+      <div className="mb-6 grid grid-cols-3 items-center gap-3">
+        <button
+          type="button"
+          onClick={() => router.push(`/room/${roomId}/breakdown`)}
+          className="justify-self-start inline-flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+        >
+          <FiDollarSign aria-hidden="true" />
+          <span className="hidden sm:inline">Cost breakdown</span>
+        </button>
+        <h2 className="min-w-0 truncate py-1 text-center text-2xl font-bold leading-[1.25] sm:text-3xl">{roomName}</h2>
+        <button
+          type="button"
+          aria-label="Profile"
+          title="Profile"
+          className="justify-self-end rounded-full bg-slate-100 p-3 text-slate-700 transition hover:bg-slate-200"
+        >
+          <FiUser aria-hidden="true" />
+        </button>
+      </div>
 
       <OnlineUsers users={onlineUsers} />
 
@@ -256,7 +292,7 @@ export default function Room({ roomId }: Props) {
       {/* Info Row */}
       <div className="flex gap-4 mb-6">
         {/* Budget Bubble */}
-        <div className="flex-1 bg-green-50 rounded-xl shadow-md p-4 text-center">
+        <div className="flex-1 bg-green-50 rounded-xl shadow-md p-2 text-center">
           <p className="text-gray-700 text-sm font-semibold mb-1">Budget</p>
           <p className="text-2xl font-bold text-blue-600">
             ${entries.reduce((sum, entry) => sum + entry.cost, 0).toFixed(2)} / ${Number(tripBudget || 0).toFixed(2)}
@@ -264,13 +300,13 @@ export default function Room({ roomId }: Props) {
         </div>
 
         {/* Description Bubble */}
-        <div className="flex-2 bg-blue-50 rounded-xl shadow-md p-4 text-center">
+        <div className="flex-2 bg-blue-50 rounded-xl shadow-md p-2 text-center">
           <p className="text-gray-700 text-sm font-semibold mb-1">Description</p>
           <p className="text-sm text-gray-600 italic">{tripDescription}</p>
         </div>
 
         {/* Date Bubble */}
-        <div className="flex-1 bg-purple-50 rounded-xl shadow-md p-4 text-center">
+        <div className="flex-1 bg-purple-50 rounded-xl shadow-md p-2 text-center">
           <p className="text-gray-700 text-sm font-semibold mb-1">Date</p>
           <p className="text-lg font-semibold text-purple-600">
             {tripDate}
@@ -313,7 +349,7 @@ export default function Room({ roomId }: Props) {
         </div>
       </div>
 
-      <div className="max-h-[60vh] overflow-y-auto">
+      <div className="max-h-[60vh] overflow-y-auto pb-2">
         {entries.length === 0 ? (
           <div className="text-center text-gray-500 italic py-8">
             No items created yet
@@ -324,8 +360,8 @@ export default function Room({ roomId }: Props) {
               <li
                 key={entry.id}
                 className={compactView
-                  ? "flex min-h-14 items-center justify-between gap-3 rounded-lg border border-gray-100 bg-white px-3 py-2 shadow-sm"
-                  : "flex justify-between rounded-xl bg-white p-4 shadow-md"}
+                  ? "flex min-h-14 items-center justify-between gap-3 rounded-lg border border-gray-100 bg-white px-3 py-2 leading-normal shadow-sm"
+                  : "flex justify-between rounded-xl bg-white p-4 leading-normal shadow-md"}
               >
                 <span className={compactView ? "min-w-0 flex-1 truncate font-semibold" : "w-1/4 font-semibold"}>
                   {entry.name}
@@ -379,7 +415,7 @@ export default function Room({ roomId }: Props) {
           <div className="absolute inset-0 bg-black/40" onClick={() => { setShowDeleteModal(false); setDeletingEntry(null); }} />
           <div className="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
             <h3 className="text-lg font-semibold">Delete item</h3>
-            <p className="mt-2 text-sm text-gray-600">Are you sure you want to delete "{deletingEntry.name}"?</p>
+            <p className="mt-2 text-sm text-gray-600">Are you sure you want to delete &quot;{deletingEntry.name}&quot;?</p>
             <div className="mt-4 flex justify-end gap-2">
               <button
                 onClick={() => { setShowDeleteModal(false); setDeletingEntry(null); }}
@@ -418,7 +454,7 @@ export default function Room({ roomId }: Props) {
             value={name}
             placeholder="Item name"
             onChange={(e) => setName(e.target.value)}
-            className="flex-1 px-3 py-2 rounded-xl border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="flex-1 px-3 py-2 leading-normal rounded-xl border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
           <input
             type="number"
@@ -428,7 +464,7 @@ export default function Room({ roomId }: Props) {
             onChange={(e) =>
               setQuantity(e.target.value === "" ? "" : Number(e.target.value))
             }
-            className="w-48 px-3 py-2 rounded-xl border border-gray-300 shadow-sm"
+            className="w-48 px-3 py-2 leading-normal rounded-xl border border-gray-300 shadow-sm"
           />
 
           <input
@@ -440,13 +476,13 @@ export default function Room({ roomId }: Props) {
             onChange={(e) =>
               setCost(e.target.value === "" ? "" : Number(e.target.value))
             }
-            className="w-48 px-3 py-2 rounded-xl border border-gray-300 shadow-sm"
+            className="w-48 px-3 py-2 leading-normal rounded-xl border border-gray-300 shadow-sm"
           />
         </div>
 
         <button
           type="submit"
-          className="self-end px-6 py-2 bg-blue-500 text-white font-semibold rounded-xl shadow hover:bg-blue-600 transition cursor-pointer"
+          className="self-end px-6 py-2 leading-normal bg-blue-500 text-white font-semibold rounded-xl shadow hover:bg-blue-600 transition cursor-pointer"
         >
           Add
         </button>

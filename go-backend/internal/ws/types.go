@@ -36,5 +36,6 @@ type Envelope struct {
 	Type    string        `json:"type"`
 	Room    string        `json:"room"`
 	Entry   *PackingEntry `json:"entry,omitempty"`
+	EntryID string        `json:"entryId,omitempty"`
 	Payload interface{}   `json:"payload,omitempty"`
 }
