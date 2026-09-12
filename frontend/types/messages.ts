@@ -4,6 +4,7 @@ export type PackingEntry = {
   quantity: number;
   cost: number;
   assignedTo: string;
+  assignedToId?: string;
 };
 
 export type RoomInfo = {
@@ -15,6 +16,7 @@ export type RoomUser = {
   clientId: string;
   displayName: string;
   color: string;
+  online: boolean;
 };
 
 export type ClientMessage =
@@ -33,6 +35,7 @@ export type ClientMessage =
     roomId: string;
     clientId: string;
     displayName: string;
+    claimClientId?: string;
   }
   | { type: "add_entry"; roomId: string; entry: PackingEntry }
   | { type: "delete_entry"; roomId: string; entryId: string };
@@ -54,4 +57,8 @@ export type ServerMessage =
   | { type: "presence_snapshot"; room: string; payload: { users: RoomUser[] } }
   | { type: "user_joined"; room: string; payload: { user: RoomUser } }
   | { type: "user_left"; room: string; payload: { clientId: string } }
-  | { type: "error"; room: string; payload: string };
+  | {
+    type: "error";
+    room: string;
+    payload: string | { type: "name_conflict"; displayName: string; clientId: string };
+  };

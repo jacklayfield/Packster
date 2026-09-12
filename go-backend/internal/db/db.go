@@ -53,10 +53,22 @@ CREATE TABLE IF NOT EXISTS packing_entries (
 	quantity INT NOT NULL DEFAULT 1,
 	cost DOUBLE PRECISION NOT NULL DEFAULT 0,
 	assigned_to TEXT NOT NULL DEFAULT '',
+	assigned_to_id TEXT NOT NULL DEFAULT '',
 	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS packing_entries_room_id_idx ON packing_entries(room_id);
+
+ALTER TABLE packing_entries ADD COLUMN IF NOT EXISTS assigned_to_id TEXT NOT NULL DEFAULT '';
+
+CREATE TABLE IF NOT EXISTS room_participants (
+	room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+	client_id TEXT NOT NULL,
+	display_name TEXT NOT NULL,
+	color TEXT NOT NULL,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (room_id, client_id)
+);
 `
 
 	_, err := s.pool.Exec(ctx, schema)

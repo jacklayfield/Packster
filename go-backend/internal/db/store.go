@@ -8,11 +8,18 @@ import (
 )
 
 type Entry struct {
-	ID         string
-	Name       string
-	Quantity   int
-	Cost       float64
-	AssignedTo string
+	ID           string
+	Name         string
+	Quantity     int
+	Cost         float64
+	AssignedTo   string
+	AssignedToID string
+}
+
+type Participant struct {
+	ClientID    string
+	DisplayName string
+	Color       string
 }
 
 func (s *Store) UpsertRoom(ctx context.Context, id, name, budget, description, date string) error {
@@ -42,7 +49,7 @@ WHERE id = $1
 	}
 
 	rows, err := s.pool.Query(ctx, `
-SELECT id, name, quantity, cost, assigned_to
+SELECT id, name, quantity, cost, assigned_to, assigned_to_id
 FROM packing_entries
 WHERE room_id = $1
 ORDER BY created_at ASC
@@ -54,7 +61,7 @@ ORDER BY created_at ASC
 
 	for rows.Next() {
 		var entry Entry
-		if err := rows.Scan(&entry.ID, &entry.Name, &entry.Quantity, &entry.Cost, &entry.AssignedTo); err != nil {
+		if err := rows.Scan(&entry.ID, &entry.Name, &entry.Quantity, &entry.Cost, &entry.AssignedTo, &entry.AssignedToID); err != nil {
 			return true, name, budget, description, date, nil, err
 		}
 		entries = append(entries, entry)
@@ -63,16 +70,51 @@ ORDER BY created_at ASC
 	return true, name, budget, description, date, entries, rows.Err()
 }
 
+func (s *Store) GetParticipants(ctx context.Context, roomID string) ([]Participant, error) {
+	rows, err := s.pool.Query(ctx, `
+SELECT client_id, display_name, color
+FROM room_participants
+WHERE room_id = $1
+ORDER BY created_at ASC
+`, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var participants []Participant
+	for rows.Next() {
+		var participant Participant
+		if err := rows.Scan(&participant.ClientID, &participant.DisplayName, &participant.Color); err != nil {
+			return nil, err
+		}
+		participants = append(participants, participant)
+	}
+	return participants, rows.Err()
+}
+
+func (s *Store) UpsertParticipant(ctx context.Context, roomID string, participant Participant) error {
+	_, err := s.pool.Exec(ctx, `
+INSERT INTO room_participants (room_id, client_id, display_name, color)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (room_id, client_id) DO UPDATE SET
+	display_name = EXCLUDED.display_name,
+	color = EXCLUDED.color
+`, roomID, participant.ClientID, participant.DisplayName, participant.Color)
+	return err
+}
+
 func (s *Store) AddEntry(ctx context.Context, roomID string, entry Entry) error {
 	_, err := s.pool.Exec(ctx, `
-INSERT INTO packing_entries (id, room_id, name, quantity, cost, assigned_to)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO packing_entries (id, room_id, name, quantity, cost, assigned_to, assigned_to_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 ON CONFLICT (id) DO UPDATE SET
 	name = EXCLUDED.name,
 	quantity = EXCLUDED.quantity,
 	cost = EXCLUDED.cost,
-	assigned_to = EXCLUDED.assigned_to
-`, entry.ID, roomID, entry.Name, entry.Quantity, entry.Cost, entry.AssignedTo)
+	assigned_to = EXCLUDED.assigned_to,
+	assigned_to_id = EXCLUDED.assigned_to_id
+`, entry.ID, roomID, entry.Name, entry.Quantity, entry.Cost, entry.AssignedTo, entry.AssignedToID)
 	return err
 }
 

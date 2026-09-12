@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useWebSocket } from "@/hooks/useWebSocket";
-import { getDisplayName, getGuestId, setDisplayName } from "@/lib/guest";
+import { getDisplayName, getGuestId, getRoomParticipantId, setDisplayName, setRoomParticipantId } from "@/lib/guest";
 import OnlineUsers from "@/components/OnlineUsers";
 import type { ClientMessage, PackingEntry, RoomUser } from "@/types/messages";
 import { FiDollarSign, FiGrid, FiList, FiTrash2, FiUser } from "react-icons/fi";
@@ -17,6 +17,9 @@ export default function Room({ roomId }: Props) {
   const [clientId, setClientId] = useState("");
   const [displayName, setDisplayNameState] = useState("");
   const [nameDraft, setNameDraft] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [nameConflict, setNameConflict] = useState<{ displayName: string; clientId: string } | null>(null);
+  const [claimClientId, setClaimClientId] = useState<string | undefined>();
   const [onlineUsers, setOnlineUsers] = useState<RoomUser[]>([]);
   const [snapshotReceived, setSnapshotReceived] = useState(false);
   const [roomError, setRoomError] = useState("");
@@ -24,8 +27,9 @@ export default function Room({ roomId }: Props) {
 
   const { messages, send } = useWebSocket(
     roomId,
-    { clientId, displayName }
+    { clientId, displayName, claimClientId }
   );
+  const participantId = claimClientId ?? clientId;
   const [entries, setEntries] = useState<PackingEntry[]>([]);
   const [roomName, setRoomName] = useState(roomId);
   const [tripBudget, setTripBudget] = useState("0");
@@ -45,10 +49,11 @@ export default function Room({ roomId }: Props) {
   // Initialize client-only state after hydration
   useEffect(() => {
     setClientId(getGuestId());
+    setClaimClientId(getRoomParticipantId(roomId) || undefined);
     const savedName = getDisplayName();
     setDisplayNameState(savedName);
     setNameDraft(savedName);
-  }, []);
+  }, [roomId]);
 
   useEffect(() => {
     setShareLink(`${window.location.origin}/room/${roomId}`);
@@ -72,6 +77,7 @@ export default function Room({ roomId }: Props) {
     const updatedEntry: PackingEntry = {
       ...entry,
       assignedTo: displayName,
+      assignedToId: participantId,
     };
 
     const message: ClientMessage = { type: "add_entry", roomId, entry: updatedEntry };
@@ -79,11 +85,12 @@ export default function Room({ roomId }: Props) {
   };
 
   const handleUnclaimEntry = (entry: PackingEntry) => {
-    if (!displayName || entry.assignedTo !== displayName) return;
+    if (!participantId || entry.assignedToId !== participantId) return;
 
     const updatedEntry: PackingEntry = {
       ...entry,
       assignedTo: "Unassigned",
+      assignedToId: undefined,
     };
 
     const message: ClientMessage = { type: "add_entry", roomId, entry: updatedEntry };
@@ -134,11 +141,20 @@ export default function Room({ roomId }: Props) {
           });
           break;
         case "user_left":
-          setOnlineUsers((prev) => prev.filter((user) => user.clientId !== msg.payload.clientId));
+          setOnlineUsers((prev) => prev.map((user) => (
+            user.clientId === msg.payload.clientId ? { ...user, online: false } : user
+          )));
           break;
         case "error":
           console.error(msg.payload);
-          setRoomError(msg.payload);
+          if (typeof msg.payload !== "string" && msg.payload.type === "name_conflict") {
+            setNameConflict(msg.payload);
+            setDisplayNameState("");
+          } else if (typeof msg.payload === "string" && msg.payload === "Room not found") {
+            setRoomError(msg.payload);
+          } else {
+            setNameError(typeof msg.payload === "string" ? msg.payload : "Unable to join this room");
+          }
           break;
       }
     }
@@ -158,6 +174,20 @@ export default function Room({ roomId }: Props) {
 
     setDisplayName(trimmed);
     setDisplayNameState(trimmed);
+    setNameError("");
+    setNameConflict(null);
+  };
+
+  const handleClaimExistingParticipant = () => {
+    if (!nameConflict || !clientId || !nameDraft.trim()) return;
+
+    const chosenName = nameDraft.trim();
+    setDisplayName(chosenName);
+    setDisplayNameState(chosenName);
+    setClaimClientId(nameConflict.clientId);
+    setRoomParticipantId(roomId, nameConflict.clientId);
+    setNameError("");
+    setNameConflict(null);
   };
 
   const handleAddEntry = () => {
@@ -177,6 +207,14 @@ export default function Room({ roomId }: Props) {
     setName("");
     setQuantity(1);
     setCost(0);
+  };
+
+  const getAssignedDisplayName = (entry: PackingEntry) => {
+    if (!entry.assignedToId) {
+      return entry.assignedTo;
+    }
+
+    return onlineUsers.find((user) => user.clientId === entry.assignedToId)?.displayName ?? entry.assignedTo;
   };
 
   if (!displayName) {
@@ -201,6 +239,28 @@ export default function Room({ roomId }: Props) {
             className="mt-6 w-full rounded-2xl border border-slate-200 px-4 py-3 text-base shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
             autoFocus
           />
+          {nameError && <p className="mt-2 text-sm text-red-600">{nameError}</p>}
+          {nameConflict && (
+            <div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">
+              <p>A participant named {nameConflict.displayName} already exists in this room. Is that you?</p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleClaimExistingParticipant}
+                  className="rounded-xl bg-amber-600 px-3 py-2 font-semibold text-white hover:bg-amber-700"
+                >
+                  Yes, that&apos;s me
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setNameConflict(null); setNameDraft(""); }}
+                  className="rounded-xl bg-white px-3 py-2 font-semibold text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100"
+                >
+                  No, choose another
+                </button>
+              </div>
+            </div>
+          )}
           <button
             type="submit"
             disabled={!nameDraft.trim()}
@@ -383,8 +443,8 @@ export default function Room({ roomId }: Props) {
                     </button>
                   ) : (
                     <>
-                      {entry.assignedTo}
-                      {entry.assignedTo === displayName && (
+                      {getAssignedDisplayName(entry)}
+                      {entry.assignedToId === participantId && (
                         <button
                           type="button"
                           onClick={() => handleUnclaimEntry(entry)}

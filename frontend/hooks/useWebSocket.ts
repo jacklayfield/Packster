@@ -4,6 +4,7 @@ import type { ClientMessage, ServerMessage } from "@/types/messages";
 type Identity = {
   clientId: string;
   displayName: string;
+  claimClientId?: string;
 };
 
 export function useWebSocket(
@@ -14,6 +15,7 @@ export function useWebSocket(
   const [messages, setMessages] = useState<ServerMessage[]>([]);
   const messageQueueRef = useRef<ClientMessage[]>([]);
   const sentInitialMessageRef = useRef(false);
+  const lastDisplayNameRef = useRef("");
 
   // Establish WebSocket connection - only depends on roomId and clientId
   useEffect(() => {
@@ -53,6 +55,11 @@ export function useWebSocket(
 
   // Send create or join message once displayName is available
   useEffect(() => {
+    if (lastDisplayNameRef.current && lastDisplayNameRef.current !== identity.displayName) {
+      sentInitialMessageRef.current = false;
+    }
+    lastDisplayNameRef.current = identity.displayName;
+
     if (!identity.displayName || !identity.clientId || !roomId || sentInitialMessageRef.current) {
       return;
     }
@@ -99,6 +106,7 @@ export function useWebSocket(
         roomId,
         clientId: identity.clientId,
         displayName: identity.displayName,
+        claimClientId: identity.claimClientId,
       };
     }
 
@@ -110,7 +118,7 @@ export function useWebSocket(
     } else {
       console.log("WebSocket not ready (state: " + (wsRef.current?.readyState ?? 'null') + "), queueing message");
       messageQueueRef.current.push(message);
-      
+
       // Also try sending after a small delay if WebSocket is still connecting
       if (wsRef.current?.readyState === WebSocket.CONNECTING) {
         setTimeout(() => {

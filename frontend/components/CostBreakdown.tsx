@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FiArrowLeft, FiDollarSign } from "react-icons/fi";
-import { getDisplayName, getGuestId } from "@/lib/guest";
+import { getDisplayName, getGuestId, getRoomParticipantId, setDisplayName as persistDisplayName, setRoomParticipantId } from "@/lib/guest";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import type { PackingEntry, RoomUser } from "@/types/messages";
 
@@ -12,29 +12,40 @@ type Props = {
 };
 
 type Payment = {
+    fromId: string;
     from: string;
+    toId: string;
     to: string;
     amount: number;
 };
 
-function calculatePayments(entries: PackingEntry[], participants: string[]): Payment[] {
+function calculatePayments(entries: PackingEntry[], participants: RoomUser[]): Payment[] {
     const paid = new Map<string, number>();
+    const usersByName = new Map<string, RoomUser[]>();
+    for (const participant of participants) {
+        usersByName.set(participant.displayName, [...(usersByName.get(participant.displayName) ?? []), participant]);
+    }
 
     for (const entry of entries) {
-        if (entry.assignedTo !== "Unassigned") {
-            paid.set(entry.assignedTo, (paid.get(entry.assignedTo) ?? 0) + entry.cost);
+        if (entry.assignedTo === "Unassigned") continue;
+        const ownerId = entry.assignedToId ?? (usersByName.get(entry.assignedTo)?.length === 1
+            ? usersByName.get(entry.assignedTo)?.[0].clientId
+            : undefined);
+        if (ownerId) {
+            paid.set(ownerId, (paid.get(ownerId) ?? 0) + entry.cost);
         }
     }
 
-    const names = Array.from(new Set([...participants, ...paid.keys()]));
+    const participantById = new Map(participants.map((user) => [user.clientId, user]));
+    const ids = Array.from(new Set([...participants.map((user) => user.clientId), ...paid.keys()]));
     const total = Array.from(paid.values()).reduce((sum, amount) => sum + amount, 0);
-    const share = names.length > 0 ? total / names.length : 0;
-    const creditors = names
-        .map((name) => ({ name, amount: (paid.get(name) ?? 0) - share }))
+    const share = ids.length > 0 ? total / ids.length : 0;
+    const creditors = ids
+        .map((id) => ({ id, name: participantById.get(id)?.displayName ?? "Former participant", amount: (paid.get(id) ?? 0) - share }))
         .filter((person) => person.amount > 0.005)
         .sort((a, b) => b.amount - a.amount);
-    const debtors = names
-        .map((name) => ({ name, amount: share - (paid.get(name) ?? 0) }))
+    const debtors = ids
+        .map((id) => ({ id, name: participantById.get(id)?.displayName ?? "Former participant", amount: share - (paid.get(id) ?? 0) }))
         .filter((person) => person.amount > 0.005)
         .sort((a, b) => b.amount - a.amount);
     const payments: Payment[] = [];
@@ -44,7 +55,9 @@ function calculatePayments(entries: PackingEntry[], participants: string[]): Pay
     while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
         const amount = Math.min(debtors[debtorIndex].amount, creditors[creditorIndex].amount);
         payments.push({
+            fromId: debtors[debtorIndex].id,
             from: debtors[debtorIndex].name,
+            toId: creditors[creditorIndex].id,
             to: creditors[creditorIndex].name,
             amount,
         });
@@ -66,15 +79,24 @@ export default function CostBreakdown({ roomId }: Props) {
     const [roomName, setRoomName] = useState(roomId);
     const [loaded, setLoaded] = useState(false);
     const [roomError, setRoomError] = useState("");
-    const { messages } = useWebSocket(roomId, { clientId, displayName });
+    const [nameDraft, setNameDraft] = useState("");
+    const [nameConflict, setNameConflict] = useState<{ displayName: string; clientId: string } | null>(null);
+    const [claimClientId, setClaimClientId] = useState<string | undefined>();
+    const [processedMessageCount, setProcessedMessageCount] = useState(0);
+    const { messages } = useWebSocket(roomId, { clientId, displayName, claimClientId });
+    const participantId = claimClientId ?? clientId;
 
     useEffect(() => {
         setClientId(getGuestId());
-        setDisplayName(getDisplayName());
-    }, []);
+        setClaimClientId(getRoomParticipantId(roomId) || undefined);
+        const savedName = getDisplayName();
+        setDisplayName(savedName);
+        setNameDraft(savedName);
+    }, [roomId]);
 
     useEffect(() => {
-        for (const message of messages) {
+        for (let index = processedMessageCount; index < messages.length; index += 1) {
+            const message = messages[index];
             switch (message.type) {
                 case "room_snapshot":
                     setEntries(message.payload.entries ?? []);
@@ -103,24 +125,46 @@ export default function CostBreakdown({ roomId }: Props) {
                     ]);
                     break;
                 case "user_left":
-                    setUsers((current) => current.filter((user) => user.clientId !== message.payload.clientId));
+                    setUsers((current) => current.map((user) => (
+                        user.clientId === message.payload.clientId ? { ...user, online: false } : user
+                    )));
                     break;
                 case "error":
-                    setRoomError(message.payload);
+                    if (typeof message.payload !== "string" && message.payload.type === "name_conflict") {
+                        setNameConflict(message.payload);
+                        setDisplayName("");
+                    } else {
+                        setRoomError(typeof message.payload === "string" ? message.payload : "Unable to join this room");
+                    }
                     break;
             }
         }
-    }, [messages, roomId]);
+
+        if (messages.length > processedMessageCount) {
+            setProcessedMessageCount(messages.length);
+        }
+    }, [messages, processedMessageCount, roomId]);
 
     const assignedEntries = entries.filter((entry) => entry.assignedTo !== "Unassigned");
     const total = assignedEntries.reduce((sum, entry) => sum + entry.cost, 0);
     const unassignedTotal = entries
         .filter((entry) => entry.assignedTo === "Unassigned")
         .reduce((sum, entry) => sum + entry.cost, 0);
-    const participants = users.map((user) => user.displayName);
-    const currentUserColor = users.find((user) => user.displayName === displayName)?.color;
+    const participants = users;
+    const currentUserColor = users.find((user) => user.clientId === participantId)?.color;
     const payments = calculatePayments(entries, participants);
     const share = participants.length > 0 ? total / participants.length : 0;
+
+    const handleClaimExistingParticipant = () => {
+        if (!nameConflict || !clientId || !nameDraft.trim()) return;
+
+        const chosenName = nameDraft.trim();
+        persistDisplayName(chosenName);
+        setDisplayName(chosenName);
+        setClaimClientId(nameConflict.clientId);
+        setRoomParticipantId(roomId, nameConflict.clientId);
+        setNameConflict(null);
+    };
 
     if (roomError) {
         return (
@@ -135,6 +179,36 @@ export default function CostBreakdown({ roomId }: Props) {
                     >
                         Return home
                     </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (nameConflict) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+                <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl">
+                    <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-500">Packster</p>
+                    <h1 className="mt-2 text-2xl font-bold text-slate-800">Is this you?</h1>
+                    <p className="mt-2 text-sm text-slate-600">
+                        A participant named {nameConflict.displayName} already exists in this room.
+                    </p>
+                    <div className="mt-6 flex gap-2">
+                        <button
+                            type="button"
+                            onClick={handleClaimExistingParticipant}
+                            className="rounded-xl bg-amber-600 px-3 py-2 font-semibold text-white hover:bg-amber-700"
+                        >
+                            Yes, that&apos;s me
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => router.push(`/room/${roomId}`)}
+                            className="rounded-xl bg-slate-100 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-200"
+                        >
+                            No, go back
+                        </button>
+                    </div>
                 </div>
             </div>
         );
@@ -196,10 +270,10 @@ export default function CostBreakdown({ roomId }: Props) {
                             {payments.map((payment, index) => (
                                 <div key={`${payment.from}-${payment.to}-${index}`} className="flex items-center justify-between rounded-xl bg-blue-50 px-4 py-3">
                                     <span>
-                                        <strong style={payment.from === displayName ? { color: currentUserColor } : undefined}>
+                                        <strong style={payment.fromId === participantId ? { color: currentUserColor } : undefined}>
                                             {payment.from}
                                         </strong>{" "}pays{" "}
-                                        <strong style={payment.to === displayName ? { color: currentUserColor } : undefined}>
+                                        <strong style={payment.toId === participantId ? { color: currentUserColor } : undefined}>
                                             {payment.to}
                                         </strong>
                                     </span>

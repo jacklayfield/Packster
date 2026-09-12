@@ -16,7 +16,10 @@ func TestPresenceOnJoin(t *testing.T) {
 		displayName: "Alex",
 		color:       colorFromClientID("client-a"),
 	}
-	room := hub.createRoom("room123", "My Trip", "100", "Beach getaway", "2026-07-20", existing)
+	room, reason := hub.createRoom("room123", "My Trip", "100", "Beach getaway", "2026-07-20", existing)
+	if reason != "" {
+		t.Fatalf("failed to create room: %s", reason)
+	}
 	if room == nil {
 		t.Fatal("expected room to be created")
 	}
@@ -29,7 +32,10 @@ func TestPresenceOnJoin(t *testing.T) {
 		displayName: "Jamie",
 		color:       colorFromClientID("client-b"),
 	}
-	joined := hub.joinRoom("room123", joiner)
+	joined, reason, _ := hub.joinRoom("room123", joiner, "")
+	if reason != "" {
+		t.Fatalf("failed to join room: %s", reason)
+	}
 	if joined == nil {
 		t.Fatal("expected room join to succeed")
 	}
@@ -91,6 +97,30 @@ func TestPresenceOnJoin(t *testing.T) {
 
 	if userLeft.Type != "user_left" {
 		t.Fatalf("expected user_left, got %s", userLeft.Type)
+	}
+}
+
+func TestDuplicateDisplayNameRejected(t *testing.T) {
+	hub := NewHub(nil)
+
+	first := &Client{
+		send:        make(chan []byte, 10),
+		id:          "client-a",
+		displayName: "Alex",
+		color:       colorFromClientID("client-a"),
+	}
+	if _, reason := hub.createRoom("room123", "My Trip", "", "", "", first); reason != "" {
+		t.Fatalf("failed to create room: %s", reason)
+	}
+
+	second := &Client{
+		send:        make(chan []byte, 10),
+		id:          "client-b",
+		displayName: " alex ",
+		color:       colorFromClientID("client-b"),
+	}
+	if _, reason, _ := hub.joinRoom("room123", second, ""); reason == "" {
+		t.Fatal("expected duplicate display name to be rejected")
 	}
 }
 

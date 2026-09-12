@@ -18,17 +18,18 @@ export default function OnlineUsers({ users }: Props) {
     <div className="mb-6 rounded-2xl bg-white/80 p-4 shadow-md">
       <div className="flex flex-wrap gap-4">
         {users.map((user) => (
-          <div key={user.clientId} className="flex min-w-[72px] flex-col items-center gap-2">
+          <div key={user.clientId} className={`flex min-w-[72px] flex-col items-center gap-2 ${user.online ? "" : "opacity-50"}`}>
             <div
               className="flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
               style={{ backgroundColor: user.color }}
-              title={user.displayName}
+              title={user.online ? `${user.displayName} (online)` : `${user.displayName} (offline)`}
             >
               {getInitial(user.displayName)}
             </div>
             <span className="max-w-[88px] truncate text-center text-xs font-medium text-gray-700">
               {user.displayName}
             </span>
+            <span className="text-[10px] text-gray-500">{user.online ? "Online" : "Offline"}</span>
           </div>
         ))}
       </div>

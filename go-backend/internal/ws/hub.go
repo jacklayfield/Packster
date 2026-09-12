@@ -4,18 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strings"
 
 	"go-backend/internal/db"
 )
 
 type Room struct {
-	ID          string
-	Name        string
-	Budget      string
-	Description string
-	Date        string
-	clients     map[*Client]bool
-	entries     []*PackingEntry
+	ID           string
+	Name         string
+	Budget       string
+	Description  string
+	Date         string
+	clients      map[*Client]bool
+	participants map[string]RoomUser
+	entries      []*PackingEntry
 }
 
 type Hub struct {
@@ -47,12 +49,16 @@ func (h *Hub) removeStaleClients(room *Room, clientID string, keep *Client) {
 }
 
 func (h *Hub) roomUsers(room *Room) []RoomUser {
-	users := make([]RoomUser, 0, len(room.clients))
-	for client := range room.clients {
-		if client.id == "" || client.displayName == "" {
-			continue
+	users := make([]RoomUser, 0, len(room.participants))
+	for _, user := range room.participants {
+		user.Online = false
+		for client := range room.clients {
+			if client.id == user.ClientID {
+				user.Online = true
+				break
+			}
 		}
-		users = append(users, client.roomUser())
+		users = append(users, user)
 	}
 	return users
 }
@@ -83,11 +89,13 @@ func (h *Hub) broadcastUserJoined(room *Room, joined *Client) {
 		return
 	}
 
+	user := joined.roomUser()
+	user.Online = true
 	message := Envelope{
 		Type: "user_joined",
 		Room: room.ID,
 		Payload: map[string]interface{}{
-			"user": joined.roomUser(),
+			"user": user,
 		},
 	}
 	data, _ := json.Marshal(message)
@@ -133,10 +141,19 @@ func (h *Hub) announcePresence(room *Room, client *Client) {
 }
 
 func (h *Hub) addClientToRoom(room *Room, client *Client) {
-	if client.id != "" {
-		h.removeStaleClients(room, client.id, client)
-	}
 	room.clients[client] = true
+	if client.id != "" && client.displayName != "" {
+		user := client.roomUser()
+		user.Online = true
+		room.participants[client.id] = user
+		if h.store != nil {
+			if err := h.store.UpsertParticipant(context.Background(), room.ID, db.Participant{
+				ClientID: client.id, DisplayName: client.displayName, Color: client.color,
+			}); err != nil {
+				log.Printf("save participant %s to room %s: %v", client.id, room.ID, err)
+			}
+		}
+	}
 }
 
 func (h *Hub) loadRoomFromStore(id string) *Room {
@@ -154,22 +171,32 @@ func (h *Hub) loadRoomFromStore(id string) *Room {
 	}
 
 	room := &Room{
-		ID:          id,
-		Name:        name,
-		Budget:      budget,
-		Description: description,
-		Date:        date,
-		clients:     make(map[*Client]bool),
-		entries:     make([]*PackingEntry, 0, len(entries)),
+		ID:           id,
+		Name:         name,
+		Budget:       budget,
+		Description:  description,
+		Date:         date,
+		clients:      make(map[*Client]bool),
+		participants: make(map[string]RoomUser),
+		entries:      make([]*PackingEntry, 0, len(entries)),
 	}
 	for _, entry := range entries {
 		room.entries = append(room.entries, &PackingEntry{
-			ID:         entry.ID,
-			Name:       entry.Name,
-			Quantity:   entry.Quantity,
-			Cost:       entry.Cost,
-			AssignedTo: entry.AssignedTo,
+			ID:           entry.ID,
+			Name:         entry.Name,
+			Quantity:     entry.Quantity,
+			Cost:         entry.Cost,
+			AssignedTo:   entry.AssignedTo,
+			AssignedToID: entry.AssignedToID,
 		})
+	}
+	participants, err := h.store.GetParticipants(context.Background(), id)
+	if err != nil {
+		log.Printf("load participants for room %s: %v", id, err)
+	} else {
+		for _, participant := range participants {
+			room.participants[participant.ClientID] = RoomUser{ClientID: participant.ClientID, DisplayName: participant.DisplayName, Color: participant.Color}
+		}
 	}
 	h.rooms[id] = room
 	return room
@@ -198,22 +225,27 @@ func (h *Hub) persistEntry(roomID string, entry *PackingEntry) {
 	}
 
 	if err := h.store.AddEntry(context.Background(), roomID, db.Entry{
-		ID:         entry.ID,
-		Name:       entry.Name,
-		Quantity:   entry.Quantity,
-		Cost:       entry.Cost,
-		AssignedTo: entry.AssignedTo,
+		ID:           entry.ID,
+		Name:         entry.Name,
+		Quantity:     entry.Quantity,
+		Cost:         entry.Cost,
+		AssignedTo:   entry.AssignedTo,
+		AssignedToID: entry.AssignedToID,
 	}); err != nil {
 		log.Printf("save entry %s to database: %v", entry.ID, err)
 	}
 }
 
-func (h *Hub) createRoom(id, name, budget, description, date string, client *Client) *Room {
+func (h *Hub) createRoom(id, name, budget, description, date string, client *Client) (*Room, string) {
+	client.room = id
 	if _, exists := h.rooms[id]; !exists {
 		h.loadRoomFromStore(id)
 	}
 
 	if room, exists := h.rooms[id]; exists {
+		if h.duplicateName(room, client) != nil {
+			return nil, "That display name is already used in this room"
+		}
 		if name != "" {
 			room.Name = name
 		}
@@ -230,18 +262,19 @@ func (h *Hub) createRoom(id, name, budget, description, date string, client *Cli
 		h.addClientToRoom(room, client)
 		h.sendRoomSnapshot(room, client)
 		h.announcePresence(room, client)
-		return room
+		return room, ""
 	}
 
 	// Room does not exist, create it
 	room := &Room{
-		ID:          id,
-		Name:        name,
-		Budget:      budget,
-		Description: description,
-		Date:        date,
-		clients:     make(map[*Client]bool),
-		entries:     []*PackingEntry{},
+		ID:           id,
+		Name:         name,
+		Budget:       budget,
+		Description:  description,
+		Date:         date,
+		clients:      make(map[*Client]bool),
+		participants: make(map[string]RoomUser),
+		entries:      []*PackingEntry{},
 	}
 	h.rooms[id] = room
 	h.persistRoom(room)
@@ -249,7 +282,21 @@ func (h *Hub) createRoom(id, name, budget, description, date string, client *Cli
 
 	h.sendRoomSnapshot(room, client)
 	h.announcePresence(room, client)
-	return room
+	return room, ""
+}
+
+func (h *Hub) duplicateName(room *Room, client *Client) *RoomUser {
+	name := strings.ToLower(strings.TrimSpace(client.displayName))
+	if name == "" {
+		return nil
+	}
+	for _, participant := range room.participants {
+		if participant.ClientID != client.id && strings.ToLower(strings.TrimSpace(participant.DisplayName)) == name {
+			participantCopy := participant
+			return &participantCopy
+		}
+	}
+	return nil
 }
 
 func (h *Hub) sendRoomSnapshot(room *Room, client *Client) {
@@ -276,24 +323,36 @@ func (h *Hub) sendRoomSnapshot(room *Room, client *Client) {
 	}
 }
 
-func (h *Hub) joinRoom(id string, client *Client) *Room {
+func (h *Hub) joinRoom(id string, client *Client, claimClientID string) (*Room, string, *RoomUser) {
 	log.Printf("joinRoom called for room %s", id)
+	client.room = id
 	room, ok := h.rooms[id]
 	if !ok {
 		log.Printf("Room %s not in memory, loading from store", id)
 		room = h.loadRoomFromStore(id)
 		if room == nil {
 			log.Printf("Room %s not found in store", id)
-			return nil
+			return nil, "Room not found", nil
 		}
 		log.Printf("Loaded room %s from store", id)
+	}
+	if claimClientID != "" {
+		participant, exists := room.participants[claimClientID]
+		if !exists || !strings.EqualFold(strings.TrimSpace(participant.DisplayName), strings.TrimSpace(client.displayName)) {
+			return nil, "That participant could not be found", nil
+		}
+		client.id = claimClientID
+		client.color = colorFromClientID(client.id)
+	}
+	if conflict := h.duplicateName(room, client); conflict != nil {
+		return nil, "That display name is already used in this room", conflict
 	}
 
 	h.addClientToRoom(room, client)
 	log.Printf("Client %s added to room %s", client.id, id)
 	h.sendRoomSnapshot(room, client)
 	h.announcePresence(room, client)
-	return room
+	return room, "", nil
 }
 
 func (h *Hub) Run() {
@@ -308,7 +367,20 @@ func (h *Hub) Run() {
 				if _, exists := room.clients[client]; exists {
 					delete(room.clients, client)
 					close(client.send)
-					h.broadcastUserLeft(room, client)
+					stillOnline := false
+					for other := range room.clients {
+						if other.id == client.id {
+							stillOnline = true
+							break
+						}
+					}
+					if !stillOnline {
+						if participant, exists := room.participants[client.id]; exists {
+							participant.Online = false
+							room.participants[client.id] = participant
+						}
+						h.broadcastUserLeft(room, client)
+					}
 				}
 			}
 

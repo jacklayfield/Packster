@@ -11,7 +11,10 @@ func TestCreateRoomAndAddEntries(t *testing.T) {
 	go hub.Run()
 
 	creator := &Client{send: make(chan []byte, 10)}
-	room := hub.createRoom("room123", "My Trip", "100", "Beach getaway", "2026-07-20", creator)
+	room, reason := hub.createRoom("room123", "My Trip", "100", "Beach getaway", "2026-07-20", creator)
+	if reason != "" {
+		t.Fatalf("failed to create room: %s", reason)
+	}
 	if room == nil {
 		t.Fatal("expected room to be created")
 	}

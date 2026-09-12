@@ -91,14 +91,22 @@ func (c *Client) readPump() {
 			if msg.RoomID != "" {
 				c.applyIdentity(msg.ClientID, msg.DisplayName)
 				c.room = msg.RoomID
-				room := c.hub.joinRoom(msg.RoomID, c)
+				room, reason, conflict := c.hub.joinRoom(msg.RoomID, c, msg.ClaimClientID)
 				if room == nil {
-					log.Printf("Failed to join room %s - room not found", msg.RoomID)
+					log.Printf("Failed to join room %s: %s", msg.RoomID, reason)
 					// Send error message to client
+					var errorPayload interface{} = reason
+					if conflict != nil {
+						errorPayload = map[string]interface{}{
+							"type":        "name_conflict",
+							"displayName": conflict.DisplayName,
+							"clientId":    conflict.ClientID,
+						}
+					}
 					errorMsg := Envelope{
 						Type:    "error",
 						Room:    msg.RoomID,
-						Payload: "Room not found",
+						Payload: errorPayload,
 					}
 					data, _ := json.Marshal(errorMsg)
 					select {
@@ -115,7 +123,12 @@ func (c *Client) readPump() {
 			if msg.RoomID != "" && msg.RoomName != "" {
 				c.applyIdentity(msg.ClientID, msg.DisplayName)
 				c.room = msg.RoomID
-				c.hub.createRoom(msg.RoomID, msg.RoomName, msg.Budget, msg.Description, msg.Date, c)
+				room, reason := c.hub.createRoom(msg.RoomID, msg.RoomName, msg.Budget, msg.Description, msg.Date, c)
+				if room == nil {
+					data, _ := json.Marshal(Envelope{Type: "error", Room: msg.RoomID, Payload: reason})
+					c.send <- data
+					continue
+				}
 				log.Printf("Client created room %s with name %s", msg.RoomID, msg.RoomName)
 			}
 
