@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { getDisplayName, setDisplayName } from "@/lib/guest";
+import { useAccount } from "@/lib/auth";
 
 type HomeProps = {
   onJoin: (roomId: string, roomName?: string) => void;
 };
 
 export default function Home({ onJoin }: HomeProps) {
+  const { account } = useAccount();
   const [tripName, setTripName] = useState("");
   const [roomId, setRoomId] = useState("");
   const [displayName, setDisplayNameState] = useState("");
@@ -24,8 +26,8 @@ export default function Home({ onJoin }: HomeProps) {
   }>>([]);
 
   useEffect(() => {
-    setDisplayNameState(getDisplayName());
-  }, []);
+    setDisplayNameState(account?.displayName ?? getDisplayName());
+  }, [account]);
 
   useEffect(() => {
     // Generate bubbles only on client side to avoid hydration mismatch
@@ -48,6 +50,12 @@ export default function Home({ onJoin }: HomeProps) {
   }, [numBubbles]);
 
   const persistDisplayName = () => {
+    if (account) {
+      setDisplayNameState(account.displayName);
+      setNameError("");
+      return true;
+    }
+
     const trimmed = displayName.trim();
     if (!trimmed) {
       setNameError("Enter a display name before continuing.");
@@ -93,6 +101,11 @@ export default function Home({ onJoin }: HomeProps) {
       </h1>
 
       <div className="relative z-10 flex flex-col items-center">
+        {account ? (
+          <p className="mb-6 text-sm font-semibold text-white drop-shadow">
+            Signed in as {account.displayName}
+          </p>
+        ) : (
         <div className="mb-6 w-full max-w-sm">
           <label className="mb-2 block text-sm font-semibold text-white drop-shadow">
             Display name
@@ -113,6 +126,7 @@ export default function Home({ onJoin }: HomeProps) {
             <p className="mt-2 text-sm font-medium text-rose-100">{nameError}</p>
           ) : null}
         </div>
+        )}
 
         {/* Toggle buttons */}
         <div className="flex gap-2 mb-6 bg-white/20 rounded-xl p-1">
@@ -171,6 +185,14 @@ export default function Home({ onJoin }: HomeProps) {
             </button>
           </div>
         )}
+
+        <a
+          href="/account"
+          className="mb-5 rounded-xl border border-white/70 bg-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/30"
+        >
+          {account ? "My account" : "Create an account or sign in (optional)"}
+        </a>
+        {!account && <p className="text-xs text-white/90">No account needed to create or join a room.</p>}
       </div>
 
       {bubbles.map((b) => (

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"go-backend/internal/auth"
 	"go-backend/internal/db"
 	"go-backend/internal/ws"
 )
@@ -26,6 +27,7 @@ func main() {
 	go hub.Run()
 
 	mux := http.NewServeMux()
+	mux.Handle("/api/auth/", auth.NewHandler(store))
 	mux.Handle("/ws/", ws.ServeWS(hub))
 
 	log.Println("Server listening on :8080")

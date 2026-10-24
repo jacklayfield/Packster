@@ -69,6 +69,36 @@ CREATE TABLE IF NOT EXISTS room_participants (
 	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	PRIMARY KEY (room_id, client_id)
 );
+
+CREATE TABLE IF NOT EXISTS users (
+	id TEXT PRIMARY KEY,
+	display_name TEXT NOT NULL,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS user_auth_identities (
+	id TEXT PRIMARY KEY,
+	user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	provider TEXT NOT NULL,
+	provider_subject TEXT NOT NULL,
+	email TEXT NOT NULL,
+	password_hash TEXT NOT NULL DEFAULT '',
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	UNIQUE (provider, provider_subject)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS user_auth_email_password_idx
+	ON user_auth_identities (email)
+	WHERE provider = 'password';
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+	token_hash BYTEA PRIMARY KEY,
+	user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	expires_at TIMESTAMPTZ NOT NULL,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS user_sessions_expires_at_idx ON user_sessions(expires_at);
 `
 
 	_, err := s.pool.Exec(ctx, schema)

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { getDisplayName, getGuestId, getRoomParticipantId, setDisplayName, setRoomParticipantId } from "@/lib/guest";
+import { useAccount } from "@/lib/auth";
 import OnlineUsers from "@/components/OnlineUsers";
 import type { ClientMessage, PackingEntry, RoomUser } from "@/types/messages";
 import { FiDollarSign, FiGrid, FiList, FiTrash2, FiUser } from "react-icons/fi";
@@ -14,6 +15,10 @@ type Props = {
 
 export default function Room({ roomId }: Props) {
   const router = useRouter();
+  const { account, isLoading: isAccountLoading } = useAccount();
+  const [identityInitialized, setIdentityInitialized] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
   const [clientId, setClientId] = useState("");
   const [displayName, setDisplayNameState] = useState("");
   const [nameDraft, setNameDraft] = useState("");
@@ -48,16 +53,44 @@ export default function Room({ roomId }: Props) {
 
   // Initialize client-only state after hydration
   useEffect(() => {
+    if (isAccountLoading) {
+      return;
+    }
     setClientId(getGuestId());
     setClaimClientId(getRoomParticipantId(roomId) || undefined);
-    const savedName = getDisplayName();
+    const savedName = account?.displayName ?? getDisplayName();
     setDisplayNameState(savedName);
     setNameDraft(savedName);
-  }, [roomId]);
+    setIdentityInitialized(true);
+  }, [account, isAccountLoading, roomId]);
 
   useEffect(() => {
     setShareLink(`${window.location.origin}/room/${roomId}`);
   }, [roomId]);
+
+  useEffect(() => {
+    if (!accountMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !accountMenuRef.current?.contains(event.target)) {
+        setAccountMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setAccountMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [accountMenuOpen]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareLink);
@@ -217,6 +250,14 @@ export default function Room({ roomId }: Props) {
     return onlineUsers.find((user) => user.clientId === entry.assignedToId)?.displayName ?? entry.assignedTo;
   };
 
+  if (isAccountLoading || !identityInitialized) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <p className="text-lg font-semibold text-slate-700">Loading your room...</p>
+      </div>
+    );
+  }
+
   if (!displayName) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
@@ -315,14 +356,67 @@ export default function Room({ roomId }: Props) {
           <span className="hidden sm:inline">Cost breakdown</span>
         </button>
         <h2 className="min-w-0 truncate py-1 text-center text-2xl font-bold leading-[1.25] sm:text-3xl">{roomName}</h2>
-        <button
-          type="button"
-          aria-label="Profile"
-          title="Profile"
-          className="justify-self-end rounded-full bg-slate-100 p-3 text-slate-700 transition hover:bg-slate-200"
-        >
-          <FiUser aria-hidden="true" />
-        </button>
+        {account ? (
+          <div ref={accountMenuRef} className="relative justify-self-end">
+            <button
+              type="button"
+              aria-label="Open account menu"
+              aria-haspopup="menu"
+              aria-expanded={accountMenuOpen}
+              title={`Account: ${account.displayName}`}
+              onClick={() => setAccountMenuOpen((open) => !open)}
+              className="rounded-full bg-slate-100 p-3 text-slate-700 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              <FiUser aria-hidden="true" />
+            </button>
+            {accountMenuOpen && (
+              <div
+                role="menu"
+                aria-label="Account options"
+                className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 text-left shadow-lg"
+              >
+                <p className="truncate border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-800">
+                  {account.displayName}
+                </p>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled
+                  className="flex w-full cursor-not-allowed items-center justify-between px-4 py-2 text-sm text-slate-400"
+                >
+                  Preferences <span className="text-xs">Coming soon</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled
+                  className="flex w-full cursor-not-allowed items-center justify-between px-4 py-2 text-sm text-slate-400"
+                >
+                  My rooms <span className="text-xs">Coming soon</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    router.push("/account");
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Account settings
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => router.push("/account")}
+            className="justify-self-end rounded-xl bg-blue-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-600"
+          >
+            Create account / Sign in
+          </button>
+        )}
       </div>
 
       <OnlineUsers users={onlineUsers} />

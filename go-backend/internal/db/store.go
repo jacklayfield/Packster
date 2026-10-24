@@ -3,9 +3,13 @@ package db
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
+
+var ErrEmailTaken = errors.New("email already registered")
 
 type Entry struct {
 	ID           string
@@ -20,6 +24,82 @@ type Participant struct {
 	ClientID    string
 	DisplayName string
 	Color       string
+}
+
+type AuthUser struct {
+	ID           string
+	DisplayName  string
+	Email        string
+	PasswordHash string
+}
+
+func (s *Store) CreatePasswordAccount(ctx context.Context, userID, identityID, displayName, email, passwordHash string) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `INSERT INTO users (id, display_name) VALUES ($1, $2)`, userID, displayName)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, `
+INSERT INTO user_auth_identities (id, user_id, provider, provider_subject, email, password_hash)
+VALUES ($1, $2, 'password', $3, $3, $4)
+`, identityID, userID, email, passwordHash)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return ErrEmailTaken
+		}
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (s *Store) GetPasswordAccount(ctx context.Context, email string) (AuthUser, error) {
+	var user AuthUser
+	err := s.pool.QueryRow(ctx, `
+SELECT users.id, users.display_name, identity.email, identity.password_hash
+FROM user_auth_identities AS identity
+JOIN users ON users.id = identity.user_id
+WHERE identity.provider = 'password' AND identity.email = $1
+`, email).Scan(&user.ID, &user.DisplayName, &user.Email, &user.PasswordHash)
+	return user, err
+}
+
+func (s *Store) CreateSession(ctx context.Context, tokenHash []byte, userID string, expiresAt time.Time) error {
+	_, err := s.pool.Exec(ctx, `
+INSERT INTO user_sessions (token_hash, user_id, expires_at)
+VALUES ($1, $2, $3)
+`, tokenHash, userID, expiresAt)
+	return err
+}
+
+func (s *Store) GetSession(ctx context.Context, tokenHash []byte) (AuthUser, error) {
+	var user AuthUser
+	err := s.pool.QueryRow(ctx, `
+SELECT users.id, users.display_name, identity.email
+FROM user_sessions AS session
+JOIN users ON users.id = session.user_id
+LEFT JOIN LATERAL (
+	SELECT email
+	FROM user_auth_identities
+	WHERE user_id = users.id
+	ORDER BY (provider = 'password') DESC
+	LIMIT 1
+) AS identity ON TRUE
+WHERE session.token_hash = $1 AND session.expires_at > NOW()
+`, tokenHash).Scan(&user.ID, &user.DisplayName, &user.Email)
+	return user, err
+}
+
+func (s *Store) DeleteSession(ctx context.Context, tokenHash []byte) error {
+	_, err := s.pool.Exec(ctx, `DELETE FROM user_sessions WHERE token_hash = $1`, tokenHash)
+	return err
 }
 
 func (s *Store) UpsertRoom(ctx context.Context, id, name, budget, description, date string) error {
