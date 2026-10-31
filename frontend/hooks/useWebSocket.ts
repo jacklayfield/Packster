@@ -1,11 +1,29 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { ClientMessage, ServerMessage } from "@/types/messages";
+import { accountApiURL } from "@/lib/auth";
 
 type Identity = {
   clientId: string;
   displayName: string;
-  claimClientId?: string;
 };
+
+type RoomCreationData = {
+  roomName: string;
+  budget?: string;
+  description?: string;
+  date?: string;
+};
+
+function isRoomCreationData(value: unknown): value is RoomCreationData {
+  if (typeof value !== "object" || value === null || !("roomName" in value)) {
+    return false;
+  }
+  return typeof value.roomName === "string"
+    && value.roomName.length > 0
+    && (!("budget" in value) || typeof value.budget === "string")
+    && (!("description" in value) || typeof value.description === "string")
+    && (!("date" in value) || typeof value.date === "string");
+}
 
 export function useWebSocket(
   roomId: string,
@@ -25,7 +43,11 @@ export function useWebSocket(
 
     sentInitialMessageRef.current = false; // Reset when reconnecting
 
-    const ws = new WebSocket(`ws://localhost:8080/ws/?room=${roomId}`);
+    const backendURL = new URL(accountApiURL);
+    backendURL.protocol = backendURL.protocol === "https:" ? "wss:" : "ws:";
+    backendURL.pathname = `${backendURL.pathname.replace(/\/$/, "")}/ws/`;
+    backendURL.search = new URLSearchParams({ room: roomId }).toString();
+    const ws = new WebSocket(backendURL.toString());
     wsRef.current = ws;
 
     const flushQueue = () => {
@@ -64,7 +86,7 @@ export function useWebSocket(
       return;
     }
 
-    let creationData: any = null;
+    let creationData: RoomCreationData | null = null;
     let messageRoomName = "";
 
     // Try to read creation data from sessionStorage (set by create page)
@@ -72,13 +94,17 @@ export function useWebSocket(
       try {
         const sessionValue = window.sessionStorage.getItem(`packster-create:${roomId}`);
         if (sessionValue) {
-          creationData = JSON.parse(sessionValue);
-          messageRoomName = creationData.roomName;
+          const parsed: unknown = JSON.parse(sessionValue);
+          if (!isRoomCreationData(parsed)) {
+            throw new Error("Stored room creation data is invalid.");
+          }
+          creationData = parsed;
+          messageRoomName = parsed.roomName;
           // Clean up sessionStorage
           window.sessionStorage.removeItem(`packster-create:${roomId}`);
         }
-      } catch (e) {
-        // Ignore errors
+      } catch (error) {
+        console.error("Could not read room creation data.", error);
       }
     }
 
@@ -106,7 +132,6 @@ export function useWebSocket(
         roomId,
         clientId: identity.clientId,
         displayName: identity.displayName,
-        claimClientId: identity.claimClientId,
       };
     }
 

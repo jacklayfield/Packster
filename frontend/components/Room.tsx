@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useWebSocket } from "@/hooks/useWebSocket";
-import { getDisplayName, getGuestId, getRoomParticipantId, setDisplayName, setRoomParticipantId } from "@/lib/guest";
+import { getDisplayName, getGuestId, setDisplayName } from "@/lib/guest";
 import { useAccount } from "@/lib/auth";
 import OnlineUsers from "@/components/OnlineUsers";
 import type { ClientMessage, PackingEntry, RoomUser } from "@/types/messages";
@@ -23,8 +23,8 @@ export default function Room({ roomId }: Props) {
   const [displayName, setDisplayNameState] = useState("");
   const [nameDraft, setNameDraft] = useState("");
   const [nameError, setNameError] = useState("");
-  const [nameConflict, setNameConflict] = useState<{ displayName: string; clientId: string } | null>(null);
-  const [claimClientId, setClaimClientId] = useState<string | undefined>();
+  const [authRequired, setAuthRequired] = useState(false);
+  const [actionError, setActionError] = useState("");
   const [onlineUsers, setOnlineUsers] = useState<RoomUser[]>([]);
   const [snapshotReceived, setSnapshotReceived] = useState(false);
   const [roomError, setRoomError] = useState("");
@@ -32,9 +32,9 @@ export default function Room({ roomId }: Props) {
 
   const { messages, send } = useWebSocket(
     roomId,
-    { clientId, displayName, claimClientId }
+    { clientId: account?.id ?? clientId, displayName }
   );
-  const participantId = claimClientId ?? clientId;
+  const participantId = account?.id ?? clientId;
   const [entries, setEntries] = useState<PackingEntry[]>([]);
   const [roomName, setRoomName] = useState(roomId);
   const [tripBudget, setTripBudget] = useState("0");
@@ -57,7 +57,6 @@ export default function Room({ roomId }: Props) {
       return;
     }
     setClientId(getGuestId());
-    setClaimClientId(getRoomParticipantId(roomId) || undefined);
     const savedName = account?.displayName ?? getDisplayName();
     setDisplayNameState(savedName);
     setNameDraft(savedName);
@@ -104,7 +103,15 @@ export default function Room({ roomId }: Props) {
     setTimeout(() => setCopiedId(false), 2000);
   };
 
+  const requestSignIn = () => {
+    router.push(`/account?returnTo=${encodeURIComponent(`/room/${roomId}`)}`);
+  };
+
   const handleClaimEntry = (entry: PackingEntry) => {
+    if (!account) {
+      requestSignIn();
+      return;
+    }
     if (!displayName || entry.assignedTo !== "Unassigned") return;
 
     const updatedEntry: PackingEntry = {
@@ -118,6 +125,10 @@ export default function Room({ roomId }: Props) {
   };
 
   const handleUnclaimEntry = (entry: PackingEntry) => {
+    if (!account) {
+      requestSignIn();
+      return;
+    }
     if (!participantId || entry.assignedToId !== participantId) return;
 
     const updatedEntry: PackingEntry = {
@@ -180,13 +191,12 @@ export default function Room({ roomId }: Props) {
           break;
         case "error":
           console.error(msg.payload);
-          if (typeof msg.payload !== "string" && msg.payload.type === "name_conflict") {
-            setNameConflict(msg.payload);
-            setDisplayNameState("");
+          if (typeof msg.payload !== "string" && msg.payload.type === "authentication_required") {
+            setAuthRequired(true);
           } else if (typeof msg.payload === "string" && msg.payload === "Room not found") {
             setRoomError(msg.payload);
           } else {
-            setNameError(typeof msg.payload === "string" ? msg.payload : "Unable to join this room");
+            setActionError(typeof msg.payload === "string" ? msg.payload : "Unable to complete that action.");
           }
           break;
       }
@@ -208,22 +218,13 @@ export default function Room({ roomId }: Props) {
     setDisplayName(trimmed);
     setDisplayNameState(trimmed);
     setNameError("");
-    setNameConflict(null);
-  };
-
-  const handleClaimExistingParticipant = () => {
-    if (!nameConflict || !clientId || !nameDraft.trim()) return;
-
-    const chosenName = nameDraft.trim();
-    setDisplayName(chosenName);
-    setDisplayNameState(chosenName);
-    setClaimClientId(nameConflict.clientId);
-    setRoomParticipantId(roomId, nameConflict.clientId);
-    setNameError("");
-    setNameConflict(null);
   };
 
   const handleAddEntry = () => {
+    if (!account) {
+      requestSignIn();
+      return;
+    }
     if (!name.trim()) return;
 
     const entry: PackingEntry = {
@@ -270,7 +271,7 @@ export default function Room({ roomId }: Props) {
           </p>
           <h1 className="mt-2 text-2xl font-bold text-slate-800">What should we call you?</h1>
           <p className="mt-2 text-sm text-slate-600">
-            Pick a display name to join this trip. No account needed.
+            Pick a username to join this trip and look around. You can sign in later to make changes.
           </p>
           <input
             type="text"
@@ -281,27 +282,6 @@ export default function Room({ roomId }: Props) {
             autoFocus
           />
           {nameError && <p className="mt-2 text-sm text-red-600">{nameError}</p>}
-          {nameConflict && (
-            <div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">
-              <p>A participant named {nameConflict.displayName} already exists in this room. Is that you?</p>
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleClaimExistingParticipant}
-                  className="rounded-xl bg-amber-600 px-3 py-2 font-semibold text-white hover:bg-amber-700"
-                >
-                  Yes, that&apos;s me
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setNameConflict(null); setNameDraft(""); }}
-                  className="rounded-xl bg-white px-3 py-2 font-semibold text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100"
-                >
-                  No, choose another
-                </button>
-              </div>
-            </div>
-          )}
           <button
             type="submit"
             disabled={!nameDraft.trim()}
@@ -411,15 +391,23 @@ export default function Room({ roomId }: Props) {
         ) : (
           <button
             type="button"
-            onClick={() => router.push("/account")}
+            onClick={requestSignIn}
             className="justify-self-end rounded-xl bg-blue-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-600"
           >
-            Create account / Sign in
+            Sign in with Google
           </button>
         )}
       </div>
 
       <OnlineUsers users={onlineUsers} />
+      {(authRequired || actionError) && (
+        <div role={actionError ? "alert" : "status"} className="mb-4 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          {actionError || "Your account session has expired. Sign in with Google to continue."}
+          <button type="button" onClick={requestSignIn} className="ml-2 font-semibold underline">
+            Sign in with Google
+          </button>
+        </div>
+      )}
 
       {/* Share Link Section */}
       <div className="flex justify-center items-center gap-3 mb-6 text-sm">
@@ -533,12 +521,12 @@ export default function Room({ roomId }: Props) {
                       onClick={() => handleClaimEntry(entry)}
                       className="rounded-lg bg-blue-500 px-2 py-1 text-xs font-semibold text-white transition hover:bg-blue-600"
                     >
-                      Claim
+                      {account && !authRequired ? "Claim" : "Sign in to claim"}
                     </button>
                   ) : (
                     <>
                       {getAssignedDisplayName(entry)}
-                      {entry.assignedToId === participantId && (
+                      {account && !authRequired && entry.assignedToId === participantId && (
                         <button
                           type="button"
                           onClick={() => handleUnclaimEntry(entry)}
@@ -549,14 +537,16 @@ export default function Room({ roomId }: Props) {
                       )}
                     </>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => { setDeletingEntry(entry); setShowDeleteModal(true); }}
-                    className="ml-2 inline-flex items-center justify-center rounded-full bg-red-50 p-2 text-sm text-red-600 hover:bg-red-100"
-                    title="Delete item"
-                  >
-                    <FiTrash2 className="h-4 w-4" />
-                  </button>
+                  {account && !authRequired && (
+                    <button
+                      type="button"
+                      onClick={() => { setDeletingEntry(entry); setShowDeleteModal(true); }}
+                      className="ml-2 inline-flex items-center justify-center rounded-full bg-red-50 p-2 text-sm text-red-600 hover:bg-red-100"
+                      title="Delete item"
+                    >
+                      <FiTrash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </span>
               </li>
             ))}
@@ -595,52 +585,66 @@ export default function Room({ roomId }: Props) {
         </div>
       )}
 
-      <form
-        className="flex flex-col mt-6 gap-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleAddEntry();
-        }}
-      >
-        <div className="flex gap-3">
-          <input
-            type="text"
-            value={name}
-            placeholder="Item name"
-            onChange={(e) => setName(e.target.value)}
-            className="flex-1 px-3 py-2 leading-normal rounded-xl border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          <input
-            type="number"
-            value={quantity}
-            min={1}
-            placeholder="Qty"
-            onChange={(e) =>
-              setQuantity(e.target.value === "" ? "" : Number(e.target.value))
-            }
-            className="w-48 px-3 py-2 leading-normal rounded-xl border border-gray-300 shadow-sm"
-          />
-
-          <input
-            type="number"
-            value={cost}
-            min={0}
-            step={0.01}
-            placeholder="Cost"
-            onChange={(e) =>
-              setCost(e.target.value === "" ? "" : Number(e.target.value))
-            }
-            className="w-48 px-3 py-2 leading-normal rounded-xl border border-gray-300 shadow-sm"
-          />
-        </div>
-
-        <button
-          type="submit"
-          className="self-end px-6 py-2 leading-normal bg-blue-500 text-white font-semibold rounded-xl shadow hover:bg-blue-600 transition cursor-pointer"
+      {account && !authRequired ? (
+        <form
+          className="flex flex-col mt-6 gap-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleAddEntry();
+          }}
         >
-          Add
-        </button>
-      </form>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={name}
+              placeholder="Item name"
+              onChange={(e) => setName(e.target.value)}
+              className="flex-1 px-3 py-2 leading-normal rounded-xl border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <input
+              type="number"
+              value={quantity}
+              min={1}
+              placeholder="Qty"
+              onChange={(e) =>
+                setQuantity(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              className="w-48 px-3 py-2 leading-normal rounded-xl border border-gray-300 shadow-sm"
+            />
+
+            <input
+              type="number"
+              value={cost}
+              min={0}
+              step={0.01}
+              placeholder="Cost"
+              onChange={(e) =>
+                setCost(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              className="w-48 px-3 py-2 leading-normal rounded-xl border border-gray-300 shadow-sm"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="self-end px-6 py-2 leading-normal bg-blue-500 text-white font-semibold rounded-xl shadow hover:bg-blue-600 transition cursor-pointer"
+          >
+            Add
+          </button>
+        </form>
+      ) : (
+        <div className="mt-6 rounded-2xl bg-slate-100 p-5 text-center">
+          <p className="font-semibold text-slate-800">Want to make changes?</p>
+          <p className="mt-1 text-sm text-slate-600">Sign in with Google to add, claim, or remove packing items.</p>
+          <button
+            type="button"
+            onClick={requestSignIn}
+            className="mt-4 rounded-xl bg-blue-500 px-5 py-2 font-semibold text-white transition hover:bg-blue-600"
+          >
+            Sign in with Google
+          </button>
+        </div>
+      )}
     </div>
   );
 }

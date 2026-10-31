@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -8,20 +9,35 @@ import (
 	"strings"
 	"time"
 
+	"go-backend/internal/auth"
+
 	"github.com/gorilla/websocket"
 )
 
 type Client struct {
-	hub         *Hub
-	conn        *websocket.Conn
-	send        chan []byte
-	room        string
-	id          string
-	displayName string
-	color       string
+	hub           *Hub
+	conn          *websocket.Conn
+	send          chan []byte
+	room          string
+	id            string
+	displayName   string
+	color         string
+	joined        bool
+	authenticated bool
+	accountID     string
+	accountName   string
+	sessionToken  string
+	authenticator *auth.Handler
 }
 
 func (c *Client) applyIdentity(clientID, displayName string) {
+	if c.authenticated {
+		c.id = c.accountID
+		c.displayName = c.accountName
+		c.color = colorFromClientID(c.id)
+		return
+	}
+
 	if clientID != "" {
 		c.id = clientID
 	} else if c.id == "" {
@@ -34,6 +50,49 @@ func (c *Client) applyIdentity(clientID, displayName string) {
 	}
 
 	c.color = colorFromClientID(c.id)
+}
+
+func (c *Client) sendError(payload interface{}) {
+	data, err := json.Marshal(Envelope{
+		Type:    "error",
+		Room:    c.room,
+		Payload: payload,
+	})
+	if err != nil {
+		log.Printf("encode error message: %v", err)
+		return
+	}
+	select {
+	case c.send <- data:
+	default:
+		log.Printf("could not send error message to client %s", c.id)
+	}
+}
+
+func (c *Client) requireAccountSession() bool {
+	if !c.authenticated {
+		c.sendError(map[string]string{"type": "authentication_required"})
+		return false
+	}
+	if c.authenticator == nil || c.sessionToken == "" {
+		c.authenticated = false
+		c.sendError(map[string]string{"type": "authentication_required"})
+		return false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	user, ok, err := c.authenticator.AuthenticateToken(ctx, c.sessionToken)
+	if err != nil {
+		log.Printf("recheck account session for client %s: %v", c.id, err)
+		c.sendError("Unable to verify your account session. Please try again.")
+		return false
+	}
+	if !ok || user.ID != c.accountID {
+		c.authenticated = false
+		c.sendError(map[string]string{"type": "authentication_required"})
+		return false
+	}
+	return true
 }
 
 func (c *Client) roomUser() RoomUser {
@@ -91,35 +150,20 @@ func (c *Client) readPump() {
 			if msg.RoomID != "" {
 				c.applyIdentity(msg.ClientID, msg.DisplayName)
 				c.room = msg.RoomID
-				room, reason, conflict := c.hub.joinRoom(msg.RoomID, c, msg.ClaimClientID)
+				room, reason := c.hub.joinRoom(msg.RoomID, c)
 				if room == nil {
 					log.Printf("Failed to join room %s: %s", msg.RoomID, reason)
-					// Send error message to client
-					var errorPayload interface{} = reason
-					if conflict != nil {
-						errorPayload = map[string]interface{}{
-							"type":        "name_conflict",
-							"displayName": conflict.DisplayName,
-							"clientId":    conflict.ClientID,
-						}
-					}
-					errorMsg := Envelope{
-						Type:    "error",
-						Room:    msg.RoomID,
-						Payload: errorPayload,
-					}
-					data, _ := json.Marshal(errorMsg)
-					select {
-					case c.send <- data:
-					default:
-						close(c.send)
-					}
+					c.sendError(reason)
 				} else {
+					c.joined = true
 					log.Printf("Client joined room %s", msg.RoomID)
 				}
 			}
 
 		case "create_room":
+			if !c.requireAccountSession() {
+				continue
+			}
 			if msg.RoomID != "" && msg.RoomName != "" {
 				c.applyIdentity(msg.ClientID, msg.DisplayName)
 				c.room = msg.RoomID
@@ -129,10 +173,18 @@ func (c *Client) readPump() {
 					c.send <- data
 					continue
 				}
+				c.joined = true
 				log.Printf("Client created room %s with name %s", msg.RoomID, msg.RoomName)
 			}
 
 		case "add_entry":
+			if !c.requireAccountSession() {
+				continue
+			}
+			if !c.joined || c.room == "" {
+				c.sendError("Join a room before changing items.")
+				continue
+			}
 			if msg.Entry != nil {
 				c.hub.broadcast <- Envelope{
 					Type:  "entry_added",
@@ -142,6 +194,13 @@ func (c *Client) readPump() {
 			}
 
 		case "delete_entry":
+			if !c.requireAccountSession() {
+				continue
+			}
+			if !c.joined || c.room == "" {
+				c.sendError("Join a room before changing items.")
+				continue
+			}
 			// Allow either Entry with ID set, or EntryID field
 			var id string
 			if msg.Entry != nil && msg.Entry.ID != "" {

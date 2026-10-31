@@ -5,16 +5,23 @@ import Link from "next/link";
 import { accountApiURL, type Account } from "@/lib/auth";
 
 export default function AccountPage() {
-  const [mode, setMode] = useState<"register" | "login">("register");
   const [account, setAccount] = useState<Account | null>(null);
-  const [displayName, setDisplayName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [returnTo, setReturnTo] = useState("/account");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const requestedReturnTo = query.get("returnTo");
+    if (requestedReturnTo?.startsWith("/") && !requestedReturnTo.startsWith("//")) {
+      setReturnTo(requestedReturnTo);
+    }
+    if (query.get("error") === "google_signin_unavailable") {
+      setError("Google sign-in is not configured on the server yet.");
+    } else if (query.get("error")) {
+      setError("Google sign-in could not be completed. Please try again.");
+    }
+
     let cancelled = false;
     fetch(`${accountApiURL}/api/auth/me`, { credentials: "include" })
       .then(async (response) => {
@@ -38,28 +45,9 @@ export default function AccountPage() {
     };
   }, []);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError("");
-    setIsSubmitting(true);
-    try {
-      const response = await fetch(`${accountApiURL}/api/auth/${mode}`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName, email, password }),
-      });
-      const data = (await response.json()) as Account & { error?: string };
-      if (!response.ok) {
-        throw new Error(data.error || "Unable to complete your request.");
-      }
-      setAccount(data);
-      setPassword("");
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to connect to Packster.");
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleGoogleSignIn = () => {
+    const query = new URLSearchParams({ returnTo });
+    window.location.assign(`${accountApiURL}/api/auth/google?${query.toString()}`);
   };
 
   const handleLogout = async () => {
@@ -71,7 +59,6 @@ export default function AccountPage() {
       });
       if (!response.ok) throw new Error("Unable to sign out. Please try again.");
       setAccount(null);
-      setMode("login");
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to connect to Packster.");
     }
@@ -98,83 +85,20 @@ export default function AccountPage() {
           </>
         ) : (
           <>
-            <h1 className="mt-2 text-2xl font-bold text-slate-800">
-              {mode === "register" ? "Create your account" : "Welcome back"}
-            </h1>
+            <h1 className="mt-2 text-2xl font-bold text-slate-800">Sign in to take action</h1>
             <p className="mt-2 text-sm text-slate-600">
-              This is optional. You can continue creating and joining rooms without an account.
+              Join a room and look around without an account. Your first Google sign-in creates your account so you can create rooms or change packing lists.
             </p>
-
-            <div className="mt-6 flex rounded-xl bg-slate-100 p-1">
-              <button
-                type="button"
-                onClick={() => { setMode("register"); setError(""); }}
-                aria-pressed={mode === "register"}
-                className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${mode === "register" ? "bg-white text-blue-600 shadow-sm" : "text-slate-600"}`}
-              >
-                Create account
-              </button>
-              <button
-                type="button"
-                onClick={() => { setMode("login"); setError(""); }}
-                aria-pressed={mode === "login"}
-                className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${mode === "login" ? "bg-white text-blue-600 shadow-sm" : "text-slate-600"}`}
-              >
-                Sign in
-              </button>
-            </div>
-
-            <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
-              {mode === "register" && (
-                <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-                  Display name
-                  <input
-                    required
-                    maxLength={60}
-                    autoComplete="name"
-                    value={displayName}
-                    onChange={(event) => setDisplayName(event.target.value)}
-                    className="rounded-xl border border-slate-200 px-4 py-3 font-normal outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
-                  />
-                </label>
-              )}
-              <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-                Email
-                <input
-                  required
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className="rounded-xl border border-slate-200 px-4 py-3 font-normal outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
-                />
-              </label>
-              <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-                Password
-                <input
-                  required
-                  type="password"
-                  minLength={12}
-                  maxLength={72}
-                  autoComplete={mode === "register" ? "new-password" : "current-password"}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className="rounded-xl border border-slate-200 px-4 py-3 font-normal outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
-                />
-                {mode === "register" && <span className="text-xs font-normal text-slate-500">Use at least 12 characters.</span>}
-              </label>
-              {error && <p role="alert" className="text-sm font-medium text-rose-600">{error}</p>}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="rounded-2xl bg-pink-500 px-5 py-3 font-semibold text-white transition hover:bg-pink-600 disabled:cursor-wait disabled:opacity-60"
-              >
-                {isSubmitting ? "Please wait..." : mode === "register" ? "Create account" : "Sign in"}
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              className="mt-6 w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              Continue with Google
+            </button>
           </>
         )}
-        {error && account && <p role="alert" className="mt-4 text-sm font-medium text-rose-600">{error}</p>}
+        {error && <p role="alert" className="mt-4 text-sm font-medium text-rose-600">{error}</p>}
         <Link href="/" className="mt-6 inline-block text-sm font-semibold text-blue-600 hover:underline">
           Back to Packster
         </Link>

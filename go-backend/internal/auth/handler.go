@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -12,40 +13,45 @@ import (
 	"net/mail"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"go-backend/internal/db"
 
 	"github.com/jackc/pgx/v5"
-	"golang.org/x/crypto/bcrypt"
 )
 
 const (
-	sessionCookieName = "packster_session"
-	sessionDuration   = 30 * 24 * time.Hour
+	SessionCookieName  = "packster_session"
+	sessionCookieName  = SessionCookieName
+	googleStateCookie  = "packster_google_state"
+	googleReturnCookie = "packster_google_return"
+	sessionDuration    = 30 * 24 * time.Hour
+	oauthStateDuration = 10 * time.Minute
 )
 
 type accountStore interface {
-	CreatePasswordAccount(context.Context, string, string, string, string, string) error
-	GetPasswordAccount(context.Context, string) (db.AuthUser, error)
+	GetOrCreateGoogleAccount(context.Context, string, string, string, string, string) (db.AuthUser, error)
 	CreateSession(context.Context, []byte, string, time.Time) error
 	GetSession(context.Context, []byte) (db.AuthUser, error)
 	DeleteSession(context.Context, []byte) error
 }
 
 type Handler struct {
-	store accountStore
+	store              accountStore
+	httpClient         *http.Client
+	googleTokenURL     string
+	googleTokenInfoURL string
 }
 
 func NewHandler(store accountStore) *Handler {
-	return &Handler{store: store}
-}
-
-type credentials struct {
-	DisplayName string `json:"displayName"`
-	Email       string `json:"email"`
-	Password    string `json:"password"`
+	return &Handler{
+		store:              store,
+		httpClient:         &http.Client{Timeout: 10 * time.Second},
+		googleTokenURL:     "https://oauth2.googleapis.com/token",
+		googleTokenInfoURL: "https://oauth2.googleapis.com/tokeninfo",
+	}
 }
 
 type accountResponse struct {
@@ -55,7 +61,8 @@ type accountResponse struct {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !h.setCORS(w, r) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/auth/")
+	if path != "google/callback" && !h.setCORS(w, r) {
 		http.Error(w, "origin not allowed", http.StatusForbidden)
 		return
 	}
@@ -64,19 +71,19 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	switch strings.TrimPrefix(r.URL.Path, "/api/auth/") {
-	case "register":
-		if r.Method != http.MethodPost {
+	switch path {
+	case "google":
+		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		h.register(w, r)
-	case "login":
-		if r.Method != http.MethodPost {
+		h.startGoogleSignIn(w, r)
+	case "google/callback":
+		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		h.login(w, r)
+		h.finishGoogleSignIn(w, r)
 	case "me":
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -92,81 +99,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.NotFound(w, r)
 	}
-}
-
-func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
-	var input credentials
-	if !readJSON(w, r, &input) {
-		return
-	}
-
-	input.DisplayName = strings.TrimSpace(input.DisplayName)
-	input.Email = strings.ToLower(strings.TrimSpace(input.Email))
-	if len(input.DisplayName) == 0 || len(input.DisplayName) > 60 {
-		writeError(w, http.StatusBadRequest, "Display name must be between 1 and 60 characters.")
-		return
-	}
-	if !validEmail(input.Email) {
-		writeError(w, http.StatusBadRequest, "Enter a valid email address.")
-		return
-	}
-	if len(input.Password) < 12 || len(input.Password) > 72 {
-		writeError(w, http.StatusBadRequest, "Password must be between 12 and 72 bytes.")
-		return
-	}
-
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Unable to create account.")
-		return
-	}
-
-	userID, err := randomID()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Unable to create account.")
-		return
-	}
-	identityID, err := randomID()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Unable to create account.")
-		return
-	}
-	if err := h.store.CreatePasswordAccount(r.Context(), userID, identityID, input.DisplayName, input.Email, string(passwordHash)); err != nil {
-		if errors.Is(err, db.ErrEmailTaken) {
-			writeError(w, http.StatusConflict, "An account with this email already exists.")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "Unable to create account.")
-		return
-	}
-
-	user := db.AuthUser{ID: userID, DisplayName: input.DisplayName, Email: input.Email}
-	if !h.startSession(w, r, user) {
-		return
-	}
-	writeJSON(w, http.StatusCreated, accountResponse{ID: user.ID, DisplayName: user.DisplayName, Email: user.Email})
-}
-
-func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
-	var input credentials
-	if !readJSON(w, r, &input) {
-		return
-	}
-
-	input.Email = strings.ToLower(strings.TrimSpace(input.Email))
-	if !validEmail(input.Email) || input.Password == "" || len(input.Password) > 72 {
-		writeError(w, http.StatusUnauthorized, "Email or password is incorrect.")
-		return
-	}
-	user, err := h.store.GetPasswordAccount(r.Context(), input.Email)
-	if err != nil || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)) != nil {
-		writeError(w, http.StatusUnauthorized, "Email or password is incorrect.")
-		return
-	}
-	if !h.startSession(w, r, user) {
-		return
-	}
-	writeJSON(w, http.StatusOK, accountResponse{ID: user.ID, DisplayName: user.DisplayName, Email: user.Email})
 }
 
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
@@ -203,23 +135,285 @@ func (h *Handler) startSession(w http.ResponseWriter, r *http.Request, user db.A
 		return false
 	}
 	setSessionCookie(w, r, token, expiresAt)
+	clearCookie(w, r, sessionCookieName, "/api/auth")
 	return true
 }
 
 func (h *Handler) sessionUser(w http.ResponseWriter, r *http.Request) (db.AuthUser, bool, bool) {
-	cookie, err := r.Cookie(sessionCookieName)
+	user, ok, err := h.AuthenticateRequest(r)
 	if err != nil {
-		return db.AuthUser{}, false, false
+		writeError(w, http.StatusInternalServerError, "Unable to check session.")
+		return db.AuthUser{}, false, true
 	}
-	user, err := h.store.GetSession(r.Context(), tokenHash(cookie.Value))
-	if err != nil {
-		if !errors.Is(err, pgx.ErrNoRows) {
-			writeError(w, http.StatusInternalServerError, "Unable to check session.")
-			return db.AuthUser{}, false, true
-		}
+	if !ok {
 		return db.AuthUser{}, false, false
 	}
 	return user, true, false
+}
+
+func (h *Handler) AuthenticateRequest(r *http.Request) (db.AuthUser, bool, error) {
+	cookie, err := r.Cookie(sessionCookieName)
+	if err != nil {
+		return db.AuthUser{}, false, nil
+	}
+	return h.AuthenticateToken(r.Context(), cookie.Value)
+}
+
+func (h *Handler) AuthenticateToken(ctx context.Context, token string) (db.AuthUser, bool, error) {
+	user, err := h.store.GetSession(ctx, tokenHash(token))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.AuthUser{}, false, nil
+		}
+		return db.AuthUser{}, false, err
+	}
+	return user, true, nil
+}
+
+type googleTokenResponse struct {
+	IDToken string `json:"id_token"`
+}
+
+type googleIdentity struct {
+	Issuer        string         `json:"iss"`
+	Audience      string         `json:"aud"`
+	Subject       string         `json:"sub"`
+	Email         string         `json:"email"`
+	EmailVerified googleVerified `json:"email_verified"`
+	Name          string         `json:"name"`
+	ExpiresAt     string         `json:"exp"`
+}
+
+type googleVerified bool
+
+func (verified *googleVerified) UnmarshalJSON(data []byte) error {
+	var boolean bool
+	if err := json.Unmarshal(data, &boolean); err == nil {
+		*verified = googleVerified(boolean)
+		return nil
+	}
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	*verified = googleVerified(value == "true")
+	return nil
+}
+
+func (h *Handler) startGoogleSignIn(w http.ResponseWriter, r *http.Request) {
+	clientID := strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID"))
+	clientSecret := strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET"))
+	redirectURL := strings.TrimSpace(os.Getenv("GOOGLE_REDIRECT_URL"))
+	if clientID == "" || clientSecret == "" || redirectURL == "" {
+		http.Redirect(w, r, frontendURL("/account?error=google_signin_unavailable"), http.StatusFound)
+		return
+	}
+	parsedRedirect, err := url.Parse(redirectURL)
+	if err != nil || parsedRedirect.Host == "" || (parsedRedirect.Scheme != "https" && parsedRedirect.Scheme != "http") {
+		http.Redirect(w, r, frontendURL("/account?error=google_signin_unavailable"), http.StatusFound)
+		return
+	}
+
+	state, err := randomToken()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Unable to start Google sign-in.")
+		return
+	}
+	setShortLivedCookie(w, r, googleStateCookie, state)
+	setShortLivedCookie(w, r, googleReturnCookie, safeReturnPath(r.URL.Query().Get("returnTo")))
+
+	authorizationURL, err := url.Parse("https://accounts.google.com/o/oauth2/v2/auth")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Unable to start Google sign-in.")
+		return
+	}
+	query := authorizationURL.Query()
+	query.Set("client_id", clientID)
+	query.Set("redirect_uri", redirectURL)
+	query.Set("response_type", "code")
+	query.Set("scope", "openid email profile")
+	query.Set("state", state)
+	authorizationURL.RawQuery = query.Encode()
+	http.Redirect(w, r, authorizationURL.String(), http.StatusFound)
+}
+
+func (h *Handler) finishGoogleSignIn(w http.ResponseWriter, r *http.Request) {
+	stateCookie, stateErr := r.Cookie(googleStateCookie)
+	returnCookie, returnErr := r.Cookie(googleReturnCookie)
+	clearCookie(w, r, googleStateCookie, "/api/auth/google")
+	clearCookie(w, r, googleReturnCookie, "/api/auth/google")
+	if stateErr != nil || returnErr != nil ||
+		subtle.ConstantTimeCompare([]byte(stateCookie.Value), []byte(r.URL.Query().Get("state"))) != 1 {
+		http.Redirect(w, r, frontendURL("/account?error=google_signin_failed"), http.StatusFound)
+		return
+	}
+
+	if r.URL.Query().Get("error") != "" || r.URL.Query().Get("code") == "" {
+		http.Redirect(w, r, frontendURL("/account?error=google_signin_failed"), http.StatusFound)
+		return
+	}
+
+	clientID := strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID"))
+	clientSecret := strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET"))
+	redirectURL := strings.TrimSpace(os.Getenv("GOOGLE_REDIRECT_URL"))
+	if clientID == "" || clientSecret == "" || redirectURL == "" {
+		http.Redirect(w, r, frontendURL("/account?error=google_signin_unavailable"), http.StatusFound)
+		return
+	}
+	token, err := h.exchangeGoogleCode(r, r.URL.Query().Get("code"), clientID, clientSecret, redirectURL)
+	if err != nil {
+		http.Redirect(w, r, frontendURL("/account?error=google_signin_failed"), http.StatusFound)
+		return
+	}
+	identity, err := h.verifyGoogleIDToken(r, token.IDToken, clientID)
+	if err != nil {
+		http.Redirect(w, r, frontendURL("/account?error=google_signin_failed"), http.StatusFound)
+		return
+	}
+	userID, err := randomID()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Unable to create your account.")
+		return
+	}
+	identityID, err := randomID()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Unable to create your account.")
+		return
+	}
+	user, err := h.store.GetOrCreateGoogleAccount(
+		r.Context(), userID, identityID, identity.Subject,
+		strings.ToLower(strings.TrimSpace(identity.Email)), strings.TrimSpace(identity.Name),
+	)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Unable to create your account.")
+		return
+	}
+	if !h.startSession(w, r, user) {
+		return
+	}
+	http.Redirect(w, r, frontendURL(safeReturnPath(returnCookie.Value)), http.StatusFound)
+}
+
+func (h *Handler) exchangeGoogleCode(r *http.Request, code, clientID, clientSecret, redirectURL string) (googleTokenResponse, error) {
+	form := url.Values{
+		"code":          {code},
+		"client_id":     {clientID},
+		"client_secret": {clientSecret},
+		"redirect_uri":  {redirectURL},
+		"grant_type":    {"authorization_code"},
+	}
+	request, err := http.NewRequestWithContext(r.Context(), http.MethodPost, h.googleTokenURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return googleTokenResponse{}, err
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	response, err := h.httpClient.Do(request)
+	if err != nil {
+		return googleTokenResponse{}, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return googleTokenResponse{}, errors.New("Google token exchange failed")
+	}
+	var token googleTokenResponse
+	if err := json.NewDecoder(io.LimitReader(response.Body, 16*1024)).Decode(&token); err != nil {
+		return googleTokenResponse{}, err
+	}
+	if token.IDToken == "" {
+		return googleTokenResponse{}, errors.New("Google did not return an ID token")
+	}
+	return token, nil
+}
+
+func (h *Handler) verifyGoogleIDToken(r *http.Request, idToken, clientID string) (googleIdentity, error) {
+	endpoint, err := url.Parse(h.googleTokenInfoURL)
+	if err != nil {
+		return googleIdentity{}, err
+	}
+	query := endpoint.Query()
+	query.Set("id_token", idToken)
+	endpoint.RawQuery = query.Encode()
+	request, err := http.NewRequestWithContext(r.Context(), http.MethodGet, endpoint.String(), nil)
+	if err != nil {
+		return googleIdentity{}, err
+	}
+	response, err := h.httpClient.Do(request)
+	if err != nil {
+		return googleIdentity{}, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return googleIdentity{}, errors.New("Google ID token verification failed")
+	}
+	var identity googleIdentity
+	if err := json.NewDecoder(io.LimitReader(response.Body, 16*1024)).Decode(&identity); err != nil {
+		return googleIdentity{}, err
+	}
+	expiresAt, err := strconv.ParseInt(identity.ExpiresAt, 10, 64)
+	if err != nil || time.Now().Unix() >= expiresAt {
+		return googleIdentity{}, errors.New("Google ID token has expired")
+	}
+	if (identity.Issuer != "https://accounts.google.com" && identity.Issuer != "accounts.google.com") ||
+		identity.Audience != clientID || identity.Subject == "" || !bool(identity.EmailVerified) || !validEmail(identity.Email) {
+		return googleIdentity{}, errors.New("Google ID token claims are invalid")
+	}
+	if identity.Name == "" {
+		identity.Name = strings.Split(identity.Email, "@")[0]
+	}
+	if len(identity.Name) > 60 {
+		identity.Name = identity.Name[:60]
+	}
+	return identity, nil
+}
+
+func safeReturnPath(path string) string {
+	parsed, err := url.Parse(path)
+	if err != nil || len(path) > 2048 || parsed.IsAbs() || parsed.Host != "" ||
+		!strings.HasPrefix(parsed.Path, "/") || strings.HasPrefix(parsed.Path, "//") ||
+		strings.HasPrefix(path, "//") || strings.Contains(path, "\\") {
+		return "/account"
+	}
+	return path
+}
+
+func frontendURL(path string) string {
+	origin := strings.TrimRight(strings.TrimSpace(os.Getenv("FRONTEND_ORIGIN")), "/")
+	if origin == "" {
+		origin = "http://localhost:3000"
+	}
+	return origin + path
+}
+
+func setShortLivedCookie(w http.ResponseWriter, r *http.Request, name, value string) {
+	http.SetCookie(w, &http.Cookie{
+		Name: name, Value: value, Path: "/api/auth/google", HttpOnly: true,
+		Secure: requestIsSecure(r), SameSite: http.SameSiteLaxMode,
+		MaxAge: int(oauthStateDuration.Seconds()),
+	})
+}
+
+func requestIsSecure(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	origin, err := url.Parse(r.Header.Get("Origin"))
+	if err == nil && origin.Scheme == "https" {
+		return true
+	}
+	for _, configuredURL := range []string{os.Getenv("FRONTEND_ORIGIN"), os.Getenv("GOOGLE_REDIRECT_URL")} {
+		configured, parseErr := url.Parse(configuredURL)
+		if parseErr == nil && configured.Scheme == "https" {
+			return true
+		}
+	}
+	return false
+}
+
+func clearCookie(w http.ResponseWriter, r *http.Request, name, path string) {
+	http.SetCookie(w, &http.Cookie{
+		Name: name, Value: "", Path: path, HttpOnly: true,
+		Secure: requestIsSecure(r), SameSite: http.SameSiteLaxMode, MaxAge: -1,
+	})
 }
 
 func (h *Handler) setCORS(w http.ResponseWriter, r *http.Request) bool {
@@ -237,21 +431,6 @@ func (h *Handler) setCORS(w http.ResponseWriter, r *http.Request) bool {
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.Header().Add("Vary", "Origin")
-	}
-	return true
-}
-
-func readJSON(w http.ResponseWriter, r *http.Request, target interface{}) bool {
-	r.Body = http.MaxBytesReader(w, r.Body, 16*1024)
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(target); err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid request body.")
-		return false
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		writeError(w, http.StatusBadRequest, "Request body must contain a single JSON object.")
-		return false
 	}
 	return true
 }
@@ -286,16 +465,12 @@ func tokenHash(token string) []byte {
 }
 
 func setSessionCookie(w http.ResponseWriter, r *http.Request, token string, expiresAt time.Time) {
-	secure := r.TLS != nil
-	if origin, err := url.Parse(r.Header.Get("Origin")); err == nil && origin.Scheme == "https" {
-		secure = true
-	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    token,
-		Path:     "/api/auth",
+		Path:     "/",
 		HttpOnly: true,
-		Secure:   secure,
+		Secure:   requestIsSecure(r),
 		SameSite: http.SameSiteLaxMode,
 		Expires:  expiresAt,
 		MaxAge:   int(time.Until(expiresAt).Seconds()),
@@ -303,15 +478,8 @@ func setSessionCookie(w http.ResponseWriter, r *http.Request, token string, expi
 }
 
 func clearSessionCookie(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     sessionCookieName,
-		Value:    "",
-		Path:     "/api/auth",
-		HttpOnly: true,
-		Secure:   r.TLS != nil,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   -1,
-	})
+	clearCookie(w, r, sessionCookieName, "/")
+	clearCookie(w, r, sessionCookieName, "/api/auth")
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {

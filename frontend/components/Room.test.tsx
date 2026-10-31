@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   messages: [] as unknown[],
   send: vi.fn(),
   account: null as { id: string; displayName: string; email: string } | null,
-  identity: null as { clientId: string; displayName: string; claimClientId?: string } | null,
+  identity: null as { clientId: string; displayName: string } | null,
   routerPush: vi.fn(),
 }));
 
@@ -29,9 +29,7 @@ vi.mock("@/hooks/useWebSocket", () => ({
 vi.mock("@/lib/guest", () => ({
   getGuestId: () => "guest-1",
   getDisplayName: () => "Casey",
-  getRoomParticipantId: () => "participant-1",
   setDisplayName: vi.fn(),
-  setRoomParticipantId: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -106,12 +104,13 @@ describe("Room", () => {
     expect(mocks.identity?.displayName).toBe("Account Name");
   });
 
-  it("shows an account button to guests", () => {
+  it("shows read-only access and sign-in options to guests", () => {
     render(<Room roomId="trip-1" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Create account / Sign in" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Sign in with Google" })[0]);
 
-    expect(mocks.routerPush).toHaveBeenCalledWith("/account");
+    expect(mocks.routerPush).toHaveBeenCalledWith("/account?returnTo=%2Froom%2Ftrip-1");
+    expect(screen.queryByPlaceholderText("Item name")).not.toBeInTheDocument();
   });
 
   it("shows the signed-in account menu with future options", () => {
@@ -132,6 +131,11 @@ describe("Room", () => {
   });
 
   it("does not send an item when its name is blank", () => {
+    mocks.account = {
+      id: "account-1",
+      displayName: "Account Name",
+      email: "alex@example.com",
+    };
     render(<Room roomId="trip-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
@@ -140,6 +144,11 @@ describe("Room", () => {
   });
 
   it("sends a named item with default quantity and cost", () => {
+    mocks.account = {
+      id: "account-1",
+      displayName: "Account Name",
+      email: "alex@example.com",
+    };
     render(<Room roomId="trip-1" />);
     fireEvent.change(screen.getByPlaceholderText("Item name"), { target: { value: "Tent" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));

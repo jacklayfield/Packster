@@ -1,21 +1,32 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAccount } from "@/lib/auth";
 
 function CreateRoomForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { account, isLoading } = useAccount();
     const tripName = searchParams.get("room") || searchParams.get("tripName") || "My Trip";
 
     const [budget, setBudget] = useState("");
     const [description, setDescription] = useState("");
     const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
     const [error, setError] = useState("");
-    const [isCreating, setIsCreating] = useState(false);
+
+    useEffect(() => {
+        if (isLoading || account) return;
+        const returnTo = `${window.location.pathname}${window.location.search}`;
+        router.replace(`/account?returnTo=${encodeURIComponent(returnTo)}`);
+    }, [account, isLoading, router]);
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
+        if (!account) {
+            setError("Sign in with Google before creating a room.");
+            return;
+        }
 
         if (!budget.trim()) {
             setError("Please enter a budget for this trip.");
@@ -27,7 +38,6 @@ function CreateRoomForm() {
             return;
         }
 
-        setIsCreating(true);
         const roomId = crypto.randomUUID().replace(/-/g, "");
 
         // Store creation data in sessionStorage temporarily for the room page
@@ -46,6 +56,16 @@ function CreateRoomForm() {
         // Redirect to room page to create and display
         router.push(`/room/${roomId}`);
     };
+
+    if (isLoading || !account) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-300 to-purple-200 flex items-center justify-center px-4 font-sans">
+                <p className="rounded-2xl bg-white/90 px-6 py-4 font-semibold text-slate-700">
+                    {isLoading ? "Checking your account..." : "Sign in with Google to create a room."}
+                </p>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-300 to-purple-200 flex items-center justify-center px-4 py-12 font-sans">

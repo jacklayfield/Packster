@@ -24,7 +24,8 @@ describe("Home", () => {
   it("shows account access to guests", () => {
     render(<Home onJoin={vi.fn()} />);
 
-    expect(screen.getByRole("link", { name: "Create an account or sign in (optional)" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign in with Google" })).toBeInTheDocument();
+    expect(screen.getByText("Join and browse rooms for free. Sign in with Google to create or change a room.")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("What should we call you?")).toHaveValue("Guest Name");
   });
 

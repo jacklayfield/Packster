@@ -32,7 +32,7 @@ func TestPresenceOnJoin(t *testing.T) {
 		displayName: "Jamie",
 		color:       colorFromClientID("client-b"),
 	}
-	joined, reason, _ := hub.joinRoom("room123", joiner, "")
+	joined, reason := hub.joinRoom("room123", joiner)
 	if reason != "" {
 		t.Fatalf("failed to join room: %s", reason)
 	}
@@ -100,7 +100,7 @@ func TestPresenceOnJoin(t *testing.T) {
 	}
 }
 
-func TestDuplicateDisplayNameRejected(t *testing.T) {
+func TestDuplicateDisplayNamesHaveDistinctParticipants(t *testing.T) {
 	hub := NewHub(nil)
 
 	first := &Client{
@@ -119,8 +119,12 @@ func TestDuplicateDisplayNameRejected(t *testing.T) {
 		displayName: " alex ",
 		color:       colorFromClientID("client-b"),
 	}
-	if _, reason, _ := hub.joinRoom("room123", second, ""); reason == "" {
-		t.Fatal("expected duplicate display name to be rejected")
+	joined, reason := hub.joinRoom("room123", second)
+	if reason != "" || joined == nil {
+		t.Fatalf("expected duplicate display name to join as a separate participant, room=%v error=%q", joined, reason)
+	}
+	if len(joined.participants) != 2 {
+		t.Fatalf("expected two distinct participants, got %d", len(joined.participants))
 	}
 }
 

@@ -1,27 +1,26 @@
-Packster is a collaborative packing list application with web-based rooms, shared item management, and a real-time backend.
+# Packster
 
-Repository structure:
-- `go-backend`: Go-based WebSocket server, room persistence, and database integration.
-- `frontend`: Next.js application for the main web client.
+Packster is a collaborative packing-list application with shared rooms, item assignment, and a real-time backend.
+
+## Project structure
+
+- `frontend`: Next.js web application.
+- `go-backend`: Go WebSocket server, Google sign-in, and PostgreSQL persistence.
 - `archive`: older client and server versions retained for reference.
 
-Quick start:
-1. Start the database and backend services.
-2. Run the Go backend from `go-backend`.
-3. Start the `frontend` application and open the room UI in the browser.
+## Account and room access
 
-Key features:
-- Shared room state with live updates for packing entries.
-- Item creation, assignment, and claiming.
-- Room persistence via the backend database.
-- Optional email/password accounts; creating and joining rooms remains available to guests.
+Anyone can join an existing room with a username and browse its contents. A Google account is required to create a room or change its packing list (add, claim, unclaim, or delete items). These permissions are enforced by the backend as well as the interface.
 
-Development notes:
-- The main frontend is in `frontend` using Next.js.
-- WebSocket messaging is handled in `go-backend/internal/ws`.
-- Shared entry types and message contracts are defined in `frontend/types/messages.ts`.
-- The account API uses `FRONTEND_ORIGIN` (defaults to `http://localhost:3000`). Set `NEXT_PUBLIC_API_URL` when the backend is not at `http://localhost:8080`.
-- Email addresses are not verified in this first version. Password reset and email verification require a configured mail provider. Account identities are stored separately from users so Google sign-in can be added later without changing room guest identities.
+## Local setup
 
-TODO:
-- User persistence. Right now you can join a room with the SAME name as someone already in the room and confirm it is you / continue. However, once you create an account with a displayname this doesn't exactly make sense or even work correctly. It is currently not providing the normal "hey is this you?" prompt when entering with the same name as a registered account with a display name but it IS assuming that users name / items (not the login though). If someone attempts to join with the SAME displayname as someone in the room who has ALREADY created an account, they should either A. Be allowed to however, the registered user gets a UUID tied to their objects distinct from the seperate non account user. OR B. we do NOT allow users to choose the same displayname if someone in the room with an account registered has that display name. In the case of A. we need to ensure that the assigned to section is distinct in some way (undecided). Also, this goes for displayname in general even for users who created accounts. For example two users could have the same displayname registered to their account... need a way to distinguish them in the context of a room...
+1. Copy `.env.example` to `.env` in the repository root and fill in the Google OAuth credentials.
+2. Start PostgreSQL with `docker compose up -d`.
+3. In Google Cloud Console, create an OAuth client and add this authorized redirect URI:
+   `http://localhost:8080/api/auth/google/callback`
+4. Start the Go server from `go-backend`.
+5. Start the Next.js application from `frontend` and open `http://localhost:3000`.
+
+The backend loads `.env` from its working directory or the repository root (one directory above `go-backend`). Variables already set in the process environment take precedence. It reads `DATABASE_URL`, `FRONTEND_ORIGIN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URL`. `GOOGLE_REDIRECT_URL` must exactly match the redirect URI configured in Google Cloud Console. If the backend is not at `http://localhost:8080`, set `NEXT_PUBLIC_API_URL` in the frontend environment.
+
+Room guest identities and Google account identities use distinct IDs. Reusing the same username in a room does not claim another participant's identity. When a previous password account has the same verified Google email, Google sign-in reuses that account identity.

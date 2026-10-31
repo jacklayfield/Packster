@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"strings"
 
 	"go-backend/internal/db"
 )
@@ -243,9 +242,6 @@ func (h *Hub) createRoom(id, name, budget, description, date string, client *Cli
 	}
 
 	if room, exists := h.rooms[id]; exists {
-		if h.duplicateName(room, client) != nil {
-			return nil, "That display name is already used in this room"
-		}
 		if name != "" {
 			room.Name = name
 		}
@@ -285,20 +281,6 @@ func (h *Hub) createRoom(id, name, budget, description, date string, client *Cli
 	return room, ""
 }
 
-func (h *Hub) duplicateName(room *Room, client *Client) *RoomUser {
-	name := strings.ToLower(strings.TrimSpace(client.displayName))
-	if name == "" {
-		return nil
-	}
-	for _, participant := range room.participants {
-		if participant.ClientID != client.id && strings.ToLower(strings.TrimSpace(participant.DisplayName)) == name {
-			participantCopy := participant
-			return &participantCopy
-		}
-	}
-	return nil
-}
-
 func (h *Hub) sendRoomSnapshot(room *Room, client *Client) {
 	snapshot := Envelope{
 		Type: "room_snapshot",
@@ -323,7 +305,7 @@ func (h *Hub) sendRoomSnapshot(room *Room, client *Client) {
 	}
 }
 
-func (h *Hub) joinRoom(id string, client *Client, claimClientID string) (*Room, string, *RoomUser) {
+func (h *Hub) joinRoom(id string, client *Client) (*Room, string) {
 	log.Printf("joinRoom called for room %s", id)
 	client.room = id
 	room, ok := h.rooms[id]
@@ -332,27 +314,16 @@ func (h *Hub) joinRoom(id string, client *Client, claimClientID string) (*Room, 
 		room = h.loadRoomFromStore(id)
 		if room == nil {
 			log.Printf("Room %s not found in store", id)
-			return nil, "Room not found", nil
+			return nil, "Room not found"
 		}
 		log.Printf("Loaded room %s from store", id)
-	}
-	if claimClientID != "" {
-		participant, exists := room.participants[claimClientID]
-		if !exists || !strings.EqualFold(strings.TrimSpace(participant.DisplayName), strings.TrimSpace(client.displayName)) {
-			return nil, "That participant could not be found", nil
-		}
-		client.id = claimClientID
-		client.color = colorFromClientID(client.id)
-	}
-	if conflict := h.duplicateName(room, client); conflict != nil {
-		return nil, "That display name is already used in this room", conflict
 	}
 
 	h.addClientToRoom(room, client)
 	log.Printf("Client %s added to room %s", client.id, id)
 	h.sendRoomSnapshot(room, client)
 	h.announcePresence(room, client)
-	return room, "", nil
+	return room, ""
 }
 
 func (h *Hub) Run() {

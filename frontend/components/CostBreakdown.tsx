@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FiArrowLeft, FiDollarSign } from "react-icons/fi";
-import { getDisplayName, getGuestId, getRoomParticipantId, setDisplayName as persistDisplayName, setRoomParticipantId } from "@/lib/guest";
+import { getDisplayName, getGuestId } from "@/lib/guest";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { useAccount } from "@/lib/auth";
 import type { PackingEntry, RoomUser } from "@/types/messages";
 
 type Props = {
@@ -72,6 +73,7 @@ function calculatePayments(entries: PackingEntry[], participants: RoomUser[]): P
 
 export default function CostBreakdown({ roomId }: Props) {
     const router = useRouter();
+    const { account, isLoading: isAccountLoading } = useAccount();
     const [clientId, setClientId] = useState("");
     const [displayName, setDisplayName] = useState("");
     const [entries, setEntries] = useState<PackingEntry[]>([]);
@@ -79,20 +81,16 @@ export default function CostBreakdown({ roomId }: Props) {
     const [roomName, setRoomName] = useState(roomId);
     const [loaded, setLoaded] = useState(false);
     const [roomError, setRoomError] = useState("");
-    const [nameDraft, setNameDraft] = useState("");
-    const [nameConflict, setNameConflict] = useState<{ displayName: string; clientId: string } | null>(null);
-    const [claimClientId, setClaimClientId] = useState<string | undefined>();
     const [processedMessageCount, setProcessedMessageCount] = useState(0);
-    const { messages } = useWebSocket(roomId, { clientId, displayName, claimClientId });
-    const participantId = claimClientId ?? clientId;
+    const { messages } = useWebSocket(roomId, { clientId: account?.id ?? clientId, displayName });
+    const participantId = account?.id ?? clientId;
 
     useEffect(() => {
+        if (isAccountLoading) return;
         setClientId(getGuestId());
-        setClaimClientId(getRoomParticipantId(roomId) || undefined);
-        const savedName = getDisplayName();
+        const savedName = account?.displayName ?? getDisplayName();
         setDisplayName(savedName);
-        setNameDraft(savedName);
-    }, [roomId]);
+    }, [account, isAccountLoading, roomId]);
 
     useEffect(() => {
         for (let index = processedMessageCount; index < messages.length; index += 1) {
@@ -130,12 +128,7 @@ export default function CostBreakdown({ roomId }: Props) {
                     )));
                     break;
                 case "error":
-                    if (typeof message.payload !== "string" && message.payload.type === "name_conflict") {
-                        setNameConflict(message.payload);
-                        setDisplayName("");
-                    } else {
-                        setRoomError(typeof message.payload === "string" ? message.payload : "Unable to join this room");
-                    }
+                    setRoomError(typeof message.payload === "string" ? message.payload : "Unable to join this room");
                     break;
             }
         }
@@ -155,17 +148,6 @@ export default function CostBreakdown({ roomId }: Props) {
     const payments = calculatePayments(entries, participants);
     const share = participants.length > 0 ? total / participants.length : 0;
 
-    const handleClaimExistingParticipant = () => {
-        if (!nameConflict || !clientId || !nameDraft.trim()) return;
-
-        const chosenName = nameDraft.trim();
-        persistDisplayName(chosenName);
-        setDisplayName(chosenName);
-        setClaimClientId(nameConflict.clientId);
-        setRoomParticipantId(roomId, nameConflict.clientId);
-        setNameConflict(null);
-    };
-
     if (roomError) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
@@ -179,36 +161,6 @@ export default function CostBreakdown({ roomId }: Props) {
                     >
                         Return home
                     </button>
-                </div>
-            </div>
-        );
-    }
-
-    if (nameConflict) {
-        return (
-            <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-                <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl">
-                    <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-500">Packster</p>
-                    <h1 className="mt-2 text-2xl font-bold text-slate-800">Is this you?</h1>
-                    <p className="mt-2 text-sm text-slate-600">
-                        A participant named {nameConflict.displayName} already exists in this room.
-                    </p>
-                    <div className="mt-6 flex gap-2">
-                        <button
-                            type="button"
-                            onClick={handleClaimExistingParticipant}
-                            className="rounded-xl bg-amber-600 px-3 py-2 font-semibold text-white hover:bg-amber-700"
-                        >
-                            Yes, that&apos;s me
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => router.push(`/room/${roomId}`)}
-                            className="rounded-xl bg-slate-100 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-200"
-                        >
-                            No, go back
-                        </button>
-                    </div>
                 </div>
             </div>
         );

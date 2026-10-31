@@ -190,9 +190,9 @@ export default function Home({ onJoin }: HomeProps) {
           href="/account"
           className="mb-5 rounded-xl border border-white/70 bg-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/30"
         >
-          {account ? "My account" : "Create an account or sign in (optional)"}
+          {account ? "My account" : "Sign in with Google"}
         </a>
-        {!account && <p className="text-xs text-white/90">No account needed to create or join a room.</p>}
+        {!account && <p className="text-xs text-white/90">Join and browse rooms for free. Sign in with Google to create or change a room.</p>}
       </div>
 
       {bubbles.map((b) => (

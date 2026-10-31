@@ -9,8 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-var ErrEmailTaken = errors.New("email already registered")
-
 type Entry struct {
 	ID           string
 	Name         string
@@ -27,47 +25,94 @@ type Participant struct {
 }
 
 type AuthUser struct {
-	ID           string
-	DisplayName  string
-	Email        string
-	PasswordHash string
+	ID          string
+	DisplayName string
+	Email       string
 }
 
-func (s *Store) CreatePasswordAccount(ctx context.Context, userID, identityID, displayName, email, passwordHash string) error {
+func (s *Store) GetOrCreateGoogleAccount(ctx context.Context, userID, identityID, subject, email, displayName string) (AuthUser, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return err
+		return AuthUser{}, err
 	}
 	defer tx.Rollback(ctx)
 
-	_, err = tx.Exec(ctx, `INSERT INTO users (id, display_name) VALUES ($1, $2)`, userID, displayName)
-	if err != nil {
-		return err
+	var user AuthUser
+	err = tx.QueryRow(ctx, `
+SELECT users.id, users.display_name, identity.email
+FROM user_auth_identities AS identity
+JOIN users ON users.id = identity.user_id
+WHERE identity.provider = 'google' AND identity.provider_subject = $1
+`, subject).Scan(&user.ID, &user.DisplayName, &user.Email)
+	if err == nil {
+		if err := tx.Commit(ctx); err != nil {
+			return AuthUser{}, err
+		}
+		return user, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return AuthUser{}, err
 	}
 
+	err = tx.QueryRow(ctx, `
+SELECT users.id, users.display_name, identity.email
+FROM user_auth_identities AS identity
+JOIN users ON users.id = identity.user_id
+WHERE identity.provider = 'password' AND LOWER(identity.email) = LOWER($1)
+LIMIT 1
+`, email).Scan(&user.ID, &user.DisplayName, &user.Email)
+	if err == nil {
+		_, err = tx.Exec(ctx, `
+INSERT INTO user_auth_identities (id, user_id, provider, provider_subject, email)
+VALUES ($1, $2, 'google', $3, $4)
+`, identityID, user.ID, subject, email)
+		if err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				_ = tx.Rollback(ctx)
+				return s.getGoogleAccount(ctx, subject)
+			}
+			return AuthUser{}, err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return AuthUser{}, err
+		}
+		return user, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return AuthUser{}, err
+	}
+
+	if _, err := tx.Exec(ctx, `INSERT INTO users (id, display_name) VALUES ($1, $2)`, userID, displayName); err != nil {
+		return AuthUser{}, err
+	}
 	_, err = tx.Exec(ctx, `
-INSERT INTO user_auth_identities (id, user_id, provider, provider_subject, email, password_hash)
-VALUES ($1, $2, 'password', $3, $3, $4)
-`, identityID, userID, email, passwordHash)
+INSERT INTO user_auth_identities (id, user_id, provider, provider_subject, email)
+VALUES ($1, $2, 'google', $3, $4)
+`, identityID, userID, subject, email)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return ErrEmailTaken
+			_ = tx.Rollback(ctx)
+			return s.getGoogleAccount(ctx, subject)
 		}
-		return err
+		return AuthUser{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return AuthUser{}, err
 	}
 
-	return tx.Commit(ctx)
+	return AuthUser{ID: userID, DisplayName: displayName, Email: email}, nil
 }
 
-func (s *Store) GetPasswordAccount(ctx context.Context, email string) (AuthUser, error) {
+func (s *Store) getGoogleAccount(ctx context.Context, subject string) (AuthUser, error) {
 	var user AuthUser
 	err := s.pool.QueryRow(ctx, `
-SELECT users.id, users.display_name, identity.email, identity.password_hash
+SELECT users.id, users.display_name, identity.email
 FROM user_auth_identities AS identity
 JOIN users ON users.id = identity.user_id
-WHERE identity.provider = 'password' AND identity.email = $1
-`, email).Scan(&user.ID, &user.DisplayName, &user.Email, &user.PasswordHash)
+WHERE identity.provider = 'google' AND identity.provider_subject = $1
+`, subject).Scan(&user.ID, &user.DisplayName, &user.Email)
 	return user, err
 }
 

@@ -35,7 +35,6 @@ export type ClientMessage =
     roomId: string;
     clientId: string;
     displayName: string;
-    claimClientId?: string;
   }
   | { type: "add_entry"; roomId: string; entry: PackingEntry }
   | { type: "delete_entry"; roomId: string; entryId: string };
@@ -60,5 +59,5 @@ export type ServerMessage =
   | {
     type: "error";
     room: string;
-    payload: string | { type: "name_conflict"; displayName: string; clientId: string };
+    payload: string | { type: "authentication_required" };
   };

@@ -22,17 +22,16 @@ type RoomUser struct {
 }
 
 type ClientMessage struct {
-	Type          string        `json:"type"`
-	RoomID        string        `json:"roomId,omitempty"`
-	RoomName      string        `json:"roomName,omitempty"`
-	Budget        string        `json:"budget,omitempty"`
-	Description   string        `json:"description,omitempty"`
-	Date          string        `json:"date,omitempty"`
-	ClientID      string        `json:"clientId,omitempty"`
-	DisplayName   string        `json:"displayName,omitempty"`
-	ClaimClientID string        `json:"claimClientId,omitempty"`
-	Entry         *PackingEntry `json:"entry,omitempty"`
-	EntryID       string        `json:"entryId,omitempty"`
+	Type        string        `json:"type"`
+	RoomID      string        `json:"roomId,omitempty"`
+	RoomName    string        `json:"roomName,omitempty"`
+	Budget      string        `json:"budget,omitempty"`
+	Description string        `json:"description,omitempty"`
+	Date        string        `json:"date,omitempty"`
+	ClientID    string        `json:"clientId,omitempty"`
+	DisplayName string        `json:"displayName,omitempty"`
+	Entry       *PackingEntry `json:"entry,omitempty"`
+	EntryID     string        `json:"entryId,omitempty"`
 }
 
 type Envelope struct {
