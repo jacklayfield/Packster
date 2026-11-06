@@ -1,3 +1,12 @@
 .env
 .env.*
 !.env.example
+ 
+
+# Terraform / OpenTofu
+infra/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.auto.tfvars
+crash.log

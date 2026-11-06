@@ -24,3 +24,7 @@ Anyone can join an existing room with a username and browse its contents. A Goog
 The backend loads `.env` from its working directory or the repository root (one directory above `go-backend`). Variables already set in the process environment take precedence. It reads `DATABASE_URL`, `FRONTEND_ORIGIN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URL`. `GOOGLE_REDIRECT_URL` must exactly match the redirect URI configured in Google Cloud Console. If the backend is not at `http://localhost:8080`, set `NEXT_PUBLIC_API_URL` in the frontend environment.
 
 Room guest identities and Google account identities use distinct IDs. Reusing the same username in a room does not claim another participant's identity. When a previous password account has the same verified Google email, Google sign-in reuses that account identity.
+
+## GCP infrastructure (starter)
+
+The initial Terraform/OpenTofu configuration is in [`infra/`](./infra/README.md). It enables the Artifact Registry and Cloud Run APIs and creates a Docker image repository. It does not deploy the application or create a database yet.
