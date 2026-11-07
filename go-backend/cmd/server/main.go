@@ -39,8 +39,13 @@ func main() {
 	mux.Handle("/api/auth/", authHandler)
 	mux.Handle("/ws/", ws.ServeWS(hub, authHandler))
 
-	log.Println("Server listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("Server listening on :%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, mux))
 }
 
 func loadEnvironment() error {

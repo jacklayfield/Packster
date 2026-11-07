@@ -25,6 +25,6 @@ The backend loads `.env` from its working directory or the repository root (one 
 
 Room guest identities and Google account identities use distinct IDs. Reusing the same username in a room does not claim another participant's identity. When a previous password account has the same verified Google email, Google sign-in reuses that account identity.
 
-## GCP infrastructure (starter)
+## GCP deployment
 
-The initial Terraform/OpenTofu configuration is in [`infra/`](./infra/README.md). It enables the Artifact Registry and Cloud Run APIs and creates a Docker image repository. It does not deploy the application or create a database yet.
+The Terraform/OpenTofu configuration and staged Cloud Run deployment instructions are in [`infra/`](./infra/README.md). It creates Artifact Registry and Secret Manager resources and can deploy the Next.js frontend and Go backend to Cloud Run. PostgreSQL is external to keep the always-on database cost out of this minimal setup.

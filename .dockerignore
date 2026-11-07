@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+!.env.example
+**/node_modules
+**/.next
+**/coverage
+**/dist
+**/build
+infra/.terraform
+infra/terraform.tfvars
+infra/*.tfstate*
+infra/*.tfplan
