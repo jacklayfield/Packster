@@ -1,2 +1,12 @@
 project_id = "gcp-project-id"
 region     = "us-central1"
+
+# To be enabled - after pushing to Artifact Registry.
+deploy_backend  = false
+deploy_frontend = false
+
+# Set during staged deployment
+backend_image       = ""
+frontend_image      = ""
+frontend_origin     = "http://localhost:3000"
+google_redirect_url = ""
