@@ -14,12 +14,19 @@ Anyone can join an existing room with a username and browse its contents. A Goog
 
 ## Local setup
 
-1. Copy `.env.example` to `.env` in the repository root and fill in the Google OAuth credentials.
-2. Start PostgreSQL with `docker compose up -d`.
-3. In Google Cloud Console, create an OAuth client and add this authorized redirect URI:
-   `http://localhost:8080/api/auth/google/callback`
-4. Start the Go server from `go-backend`.
-5. Start the Next.js application from `frontend` and open `http://localhost:3000`.
+1. Optionally copy `.env.example` to `.env` in the repository root and add Google OAuth credentials. Without them, the app runs locally but Google sign-in is unavailable.
+2. Start all three containers from the repository root:
+
+   ```powershell
+   docker compose up --build
+   ```
+
+3. Open `http://localhost:3000`. The backend is available at `http://localhost:8080`.
+
+To enable Google sign-in, create an OAuth client in Google Cloud Console and add this authorized redirect URI:
+`http://localhost:8080/api/auth/google/callback`
+
+Stop the containers with `Ctrl+C`; use `docker compose down` to stop and remove them. PostgreSQL data is kept in the `packster_pg_data` volume.
 
 The backend loads `.env` from its working directory or the repository root (one directory above `go-backend`). Variables already set in the process environment take precedence. It reads `DATABASE_URL`, `FRONTEND_ORIGIN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URL`. `GOOGLE_REDIRECT_URL` must exactly match the redirect URI configured in Google Cloud Console. If the backend is not at `http://localhost:8080`, set `NEXT_PUBLIC_API_URL` in the frontend environment.
 
