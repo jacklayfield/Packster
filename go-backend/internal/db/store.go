@@ -147,30 +147,30 @@ func (s *Store) DeleteSession(ctx context.Context, tokenHash []byte) error {
 	return err
 }
 
-func (s *Store) UpsertRoom(ctx context.Context, id, name, budget, description, date string) error {
+func (s *Store) UpsertRoom(ctx context.Context, id, name, budget, description, date, ownerID string) error {
 	_, err := s.pool.Exec(ctx, `
-INSERT INTO rooms (id, name, budget, description, date)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO rooms (id, name, budget, description, date, owner_id)
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (id) DO UPDATE SET
 	name = EXCLUDED.name,
 	budget = EXCLUDED.budget,
 	description = EXCLUDED.description,
 	date = EXCLUDED.date
-`, id, name, budget, description, date)
+`, id, name, budget, description, date, ownerID)
 	return err
 }
 
-func (s *Store) GetRoom(ctx context.Context, id string) (found bool, name, budget, description, date string, entries []Entry, err error) {
+func (s *Store) GetRoom(ctx context.Context, id string) (found bool, name, budget, description, date, ownerID string, entries []Entry, err error) {
 	err = s.pool.QueryRow(ctx, `
-SELECT name, budget, description, date
+SELECT name, budget, description, date, owner_id
 FROM rooms
 WHERE id = $1
-`, id).Scan(&name, &budget, &description, &date)
+	`, id).Scan(&name, &budget, &description, &date, &ownerID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, "", "", "", "", nil, nil
+		return false, "", "", "", "", "", nil, nil
 	}
 	if err != nil {
-		return false, "", "", "", "", nil, err
+		return false, "", "", "", "", "", nil, err
 	}
 
 	rows, err := s.pool.Query(ctx, `
@@ -180,19 +180,19 @@ WHERE room_id = $1
 ORDER BY created_at ASC
 `, id)
 	if err != nil {
-		return true, name, budget, description, date, nil, err
+		return true, name, budget, description, date, ownerID, nil, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var entry Entry
 		if err := rows.Scan(&entry.ID, &entry.Name, &entry.Quantity, &entry.Cost, &entry.AssignedTo, &entry.AssignedToID); err != nil {
-			return true, name, budget, description, date, nil, err
+			return true, name, budget, description, date, ownerID, nil, err
 		}
 		entries = append(entries, entry)
 	}
 
-	return true, name, budget, description, date, entries, rows.Err()
+	return true, name, budget, description, date, ownerID, entries, rows.Err()
 }
 
 func (s *Store) GetParticipants(ctx context.Context, roomID string) ([]Participant, error) {
@@ -226,6 +226,14 @@ ON CONFLICT (room_id, client_id) DO UPDATE SET
 	display_name = EXCLUDED.display_name,
 	color = EXCLUDED.color
 `, roomID, participant.ClientID, participant.DisplayName, participant.Color)
+	return err
+}
+
+func (s *Store) DeleteParticipant(ctx context.Context, roomID, clientID string) error {
+	_, err := s.pool.Exec(ctx, `
+DELETE FROM room_participants
+WHERE room_id = $1 AND client_id = $2
+`, roomID, clientID)
 	return err
 }
 

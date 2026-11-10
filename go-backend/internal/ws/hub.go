@@ -14,27 +14,37 @@ type Room struct {
 	Budget       string
 	Description  string
 	Date         string
+	OwnerID      string
 	clients      map[*Client]bool
 	participants map[string]RoomUser
 	entries      []*PackingEntry
+}
+
+type memberRemovalRequest struct {
+	roomID    string
+	memberID  string
+	accountID string
+	requester *Client
 }
 
 type Hub struct {
 	rooms map[string]*Room
 	store *db.Store
 
-	register   chan *Client
-	unregister chan *Client
-	broadcast  chan Envelope
+	register     chan *Client
+	unregister   chan *Client
+	broadcast    chan Envelope
+	removeMember chan memberRemovalRequest
 }
 
 func NewHub(store *db.Store) *Hub {
 	return &Hub{
-		rooms:      make(map[string]*Room),
-		store:      store,
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		broadcast:  make(chan Envelope),
+		rooms:        make(map[string]*Room),
+		store:        store,
+		register:     make(chan *Client),
+		unregister:   make(chan *Client),
+		broadcast:    make(chan Envelope),
+		removeMember: make(chan memberRemovalRequest),
 	}
 }
 
@@ -160,7 +170,7 @@ func (h *Hub) loadRoomFromStore(id string) *Room {
 		return nil
 	}
 
-	found, name, budget, description, date, entries, err := h.store.GetRoom(context.Background(), id)
+	found, name, budget, description, date, ownerID, entries, err := h.store.GetRoom(context.Background(), id)
 	if err != nil {
 		log.Printf("load room %s from database: %v", id, err)
 		return nil
@@ -175,6 +185,7 @@ func (h *Hub) loadRoomFromStore(id string) *Room {
 		Budget:       budget,
 		Description:  description,
 		Date:         date,
+		OwnerID:      ownerID,
 		clients:      make(map[*Client]bool),
 		participants: make(map[string]RoomUser),
 		entries:      make([]*PackingEntry, 0, len(entries)),
@@ -213,6 +224,7 @@ func (h *Hub) persistRoom(room *Room) {
 		room.Budget,
 		room.Description,
 		room.Date,
+		room.OwnerID,
 	); err != nil {
 		log.Printf("save room %s to database: %v", room.ID, err)
 	}
@@ -268,6 +280,7 @@ func (h *Hub) createRoom(id, name, budget, description, date string, client *Cli
 		Budget:       budget,
 		Description:  description,
 		Date:         date,
+		OwnerID:      client.accountID,
 		clients:      make(map[*Client]bool),
 		participants: make(map[string]RoomUser),
 		entries:      []*PackingEntry{},
@@ -291,6 +304,7 @@ func (h *Hub) sendRoomSnapshot(room *Room, client *Client) {
 			"budget":      room.Budget,
 			"description": room.Description,
 			"date":        room.Date,
+			"ownerId":     room.OwnerID,
 		},
 	}
 	data, _ := json.Marshal(snapshot)
@@ -324,6 +338,69 @@ func (h *Hub) joinRoom(id string, client *Client) (*Room, string) {
 	h.sendRoomSnapshot(room, client)
 	h.announcePresence(room, client)
 	return room, ""
+}
+
+func (h *Hub) broadcastToRoom(room *Room, message Envelope) {
+	data, _ := json.Marshal(message)
+	for client := range room.clients {
+		select {
+		case client.send <- data:
+		default:
+			close(client.send)
+			delete(room.clients, client)
+		}
+	}
+}
+
+func (h *Hub) removeRoomMember(request memberRemovalRequest) {
+	room, exists := h.rooms[request.roomID]
+	if !exists {
+		request.requester.sendError("Room not found")
+		return
+	}
+	if request.accountID == "" || request.accountID != room.OwnerID {
+		request.requester.sendError("Only the room owner can remove members.")
+		return
+	}
+	if request.memberID == "" || request.memberID == room.OwnerID {
+		request.requester.sendError("The room owner cannot be removed.")
+		return
+	}
+	if _, exists := room.participants[request.memberID]; !exists {
+		request.requester.sendError("Member not found")
+		return
+	}
+
+	var updatedEntries []*PackingEntry
+	for _, entry := range room.entries {
+		if entry.AssignedToID == request.memberID {
+			entry.AssignedTo = "Unassigned"
+			entry.AssignedToID = ""
+			updatedEntries = append(updatedEntries, entry)
+			h.persistEntry(room.ID, entry)
+		}
+	}
+	delete(room.participants, request.memberID)
+	if h.store != nil {
+		if err := h.store.DeleteParticipant(context.Background(), room.ID, request.memberID); err != nil {
+			log.Printf("delete participant %s from room %s: %v", request.memberID, room.ID, err)
+		}
+	}
+
+	for client := range room.clients {
+		if client.id == request.memberID {
+			delete(room.clients, client)
+			close(client.send)
+		}
+	}
+	for _, entry := range updatedEntries {
+		h.broadcastToRoom(room, Envelope{Type: "entry_added", Room: room.ID, Entry: entry})
+	}
+	h.broadcastToRoom(room, Envelope{
+		Type:    "member_removed",
+		Room:    room.ID,
+		Payload: map[string]string{"clientId": request.memberID},
+	})
 }
 
 func (h *Hub) Run() {
@@ -404,6 +481,9 @@ func (h *Hub) Run() {
 					delete(room.clients, client)
 				}
 			}
+
+		case request := <-h.removeMember:
+			h.removeRoomMember(request)
 		}
 	}
 }

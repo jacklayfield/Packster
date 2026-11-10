@@ -7,7 +7,7 @@ import { getDisplayName, getGuestId, setDisplayName } from "@/lib/guest";
 import { useAccount } from "@/lib/auth";
 import OnlineUsers from "@/components/OnlineUsers";
 import type { ClientMessage, PackingEntry, RoomUser } from "@/types/messages";
-import { FiDollarSign, FiGrid, FiList, FiTrash2, FiUser } from "react-icons/fi";
+import { FiDollarSign, FiGrid, FiList, FiTrash2, FiUser, FiUsers, FiX } from "react-icons/fi";
 
 type Props = {
   roomId: string;
@@ -26,6 +26,9 @@ export default function Room({ roomId }: Props) {
   const [authRequired, setAuthRequired] = useState(false);
   const [actionError, setActionError] = useState("");
   const [onlineUsers, setOnlineUsers] = useState<RoomUser[]>([]);
+  const [roomOwnerId, setRoomOwnerId] = useState("");
+  const [showMembers, setShowMembers] = useState(false);
+  const [pendingMemberRemoval, setPendingMemberRemoval] = useState<RoomUser | null>(null);
   const [snapshotReceived, setSnapshotReceived] = useState(false);
   const [roomError, setRoomError] = useState("");
   const [processedMessageCount, setProcessedMessageCount] = useState(0);
@@ -158,6 +161,7 @@ export default function Room({ roomId }: Props) {
           setTripBudget(msg.payload.budget || "0");
           setTripDescription(msg.payload.description || "Add trip details here");
           setTripDate(msg.payload.date || new Date().toLocaleDateString());
+          setRoomOwnerId(msg.payload.ownerId ?? "");
           break;
         case "entry_added":
           setEntries((prev) => {
@@ -188,6 +192,12 @@ export default function Room({ roomId }: Props) {
           setOnlineUsers((prev) => prev.map((user) => (
             user.clientId === msg.payload.clientId ? { ...user, online: false } : user
           )));
+          break;
+        case "member_removed":
+          setOnlineUsers((prev) => prev.filter((user) => user.clientId !== msg.payload.clientId));
+          setPendingMemberRemoval((pending) => (
+            pending?.clientId === msg.payload.clientId ? null : pending
+          ));
           break;
         case "error":
           console.error(msg.payload);
@@ -250,6 +260,8 @@ export default function Room({ roomId }: Props) {
 
     return onlineUsers.find((user) => user.clientId === entry.assignedToId)?.displayName ?? entry.assignedTo;
   };
+
+  const isRoomOwner = Boolean(account && account.id === roomOwnerId);
 
   if (isAccountLoading || !identityInitialized) {
     return (
@@ -400,6 +412,107 @@ export default function Room({ roomId }: Props) {
       </div>
 
       <OnlineUsers users={onlineUsers} />
+      <div className="mb-6 flex justify-center">
+        <button
+          type="button"
+          onClick={() => setShowMembers(true)}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+        >
+          <FiUsers aria-hidden="true" />
+          Room members ({onlineUsers.length})
+        </button>
+      </div>
+      {showMembers && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="Close room members"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => { setShowMembers(false); setPendingMemberRemoval(null); }}
+          />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="room-members-title"
+            className="relative z-10 max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-5 shadow-xl"
+          >
+            <header className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 id="room-members-title" className="text-lg font-semibold text-slate-900">Room members</h3>
+                <p className="text-sm text-slate-500">{onlineUsers.length} total</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close room members"
+                onClick={() => { setShowMembers(false); setPendingMemberRemoval(null); }}
+                className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+              >
+                <FiX aria-hidden="true" />
+              </button>
+            </header>
+            {onlineUsers.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-500">No room members yet.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {onlineUsers.map((user) => (
+                  <li key={user.clientId} className="flex items-center gap-3 py-3">
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                      style={{ backgroundColor: user.color }}
+                      aria-hidden="true"
+                    >
+                      {user.displayName.trim().charAt(0).toUpperCase() || "?"}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-800">
+                        {user.displayName}{user.clientId === roomOwnerId ? " (owner)" : ""}
+                      </p>
+                      <p className="text-xs text-slate-500">{user.online ? "Online" : "Offline"}</p>
+                    </div>
+                    {isRoomOwner && user.clientId !== roomOwnerId && (
+                      pendingMemberRemoval?.clientId === user.clientId ? (
+                        <div className="flex shrink-0 items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPendingMemberRemoval(null)}
+                            className="rounded-lg px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              send({ type: "remove_member", roomId, memberId: user.clientId });
+                              setPendingMemberRemoval(null);
+                            }}
+                            className="rounded-lg bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700"
+                          >
+                            Confirm removal
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          aria-label={`Remove ${user.displayName}`}
+                          onClick={() => setPendingMemberRemoval(user)}
+                          className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50"
+                        >
+                          Remove
+                        </button>
+                      )
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {pendingMemberRemoval && (
+              <p role="status" className="mt-3 text-sm text-slate-600">
+                Removing {pendingMemberRemoval.displayName} will clear their item claims.
+              </p>
+            )}
+          </section>
+        </div>
+      )}
       {(authRequired || actionError) && (
         <div role={actionError ? "alert" : "status"} className="mb-4 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-800">
           {actionError || "Your account session has expired. Sign in with Google to continue."}

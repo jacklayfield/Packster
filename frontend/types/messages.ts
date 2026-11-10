@@ -37,7 +37,8 @@ export type ClientMessage =
     displayName: string;
   }
   | { type: "add_entry"; roomId: string; entry: PackingEntry }
-  | { type: "delete_entry"; roomId: string; entryId: string };
+  | { type: "delete_entry"; roomId: string; entryId: string }
+  | { type: "remove_member"; roomId: string; memberId: string };
 
 export type ServerMessage =
   | {
@@ -49,6 +50,7 @@ export type ServerMessage =
       budget?: string;
       description?: string;
       date?: string;
+      ownerId?: string;
     };
   }
   | { type: "entry_added"; room: string; entry: PackingEntry }
@@ -56,6 +58,7 @@ export type ServerMessage =
   | { type: "presence_snapshot"; room: string; payload: { users: RoomUser[] } }
   | { type: "user_joined"; room: string; payload: { user: RoomUser } }
   | { type: "user_left"; room: string; payload: { clientId: string } }
+  | { type: "member_removed"; room: string; payload: { clientId: string } }
   | {
     type: "error";
     room: string;

@@ -43,8 +43,11 @@ CREATE TABLE IF NOT EXISTS rooms (
 	budget TEXT NOT NULL DEFAULT '',
 	description TEXT NOT NULL DEFAULT '',
 	date TEXT NOT NULL DEFAULT '',
+	owner_id TEXT NOT NULL DEFAULT '',
 	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS owner_id TEXT NOT NULL DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS packing_entries (
 	id TEXT PRIMARY KEY,
@@ -75,6 +78,16 @@ CREATE TABLE IF NOT EXISTS users (
 	display_name TEXT NOT NULL,
 	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+UPDATE rooms AS room
+SET owner_id = first_account.client_id
+FROM (
+	SELECT DISTINCT ON (participant.room_id) participant.room_id, participant.client_id
+	FROM room_participants AS participant
+	JOIN users AS account ON account.id = participant.client_id
+	ORDER BY participant.room_id, participant.created_at ASC, participant.client_id ASC
+) AS first_account
+WHERE room.id = first_account.room_id AND room.owner_id = '';
 
 CREATE TABLE IF NOT EXISTS user_auth_identities (
 	id TEXT PRIMARY KEY,

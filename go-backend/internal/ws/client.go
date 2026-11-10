@@ -216,6 +216,25 @@ func (c *Client) readPump() {
 				}
 			}
 
+		case "remove_member":
+			if !c.requireAccountSession() {
+				continue
+			}
+			if !c.joined || c.room == "" {
+				c.sendError("Join a room before removing members.")
+				continue
+			}
+			if msg.MemberID == "" {
+				c.sendError("Choose a room member to remove.")
+				continue
+			}
+			c.hub.removeMember <- memberRemovalRequest{
+				roomID:    c.room,
+				memberID:  msg.MemberID,
+				accountID: c.accountID,
+				requester: c,
+			}
+
 		default:
 			log.Printf("Unknown message type: %s", msg.Type)
 		}

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ServerMessage } from "@/types/messages";
 import Room from "@/components/Room";
@@ -34,10 +34,6 @@ vi.mock("@/lib/guest", () => ({
 
 vi.mock("@/lib/auth", () => ({
   useAccount: () => ({ account: mocks.account, isLoading: false }),
-}));
-
-vi.mock("@/components/OnlineUsers", () => ({
-  default: () => null,
 }));
 
 function setMessages(messages: ServerMessage[]) {
@@ -128,6 +124,55 @@ describe("Room", () => {
     expect(screen.getByRole("menuitem", { name: /My rooms/ })).toBeDisabled();
     fireEvent.click(screen.getByRole("menuitem", { name: "Account settings" }));
     expect(mocks.routerPush).toHaveBeenCalledWith("/account");
+  });
+
+  it("keeps offline users out of the bar and lets the owner remove them from members", () => {
+    mocks.account = {
+      id: "account-1",
+      displayName: "Owner",
+      email: "owner@example.com",
+    };
+    setMessages([
+      {
+        type: "room_snapshot",
+        room: "trip-1",
+        payload: {
+          entries: [],
+          roomName: "Weekend Away",
+          ownerId: "account-1",
+        },
+      },
+      {
+        type: "presence_snapshot",
+        room: "trip-1",
+        payload: {
+          users: [
+            { clientId: "account-1", displayName: "Owner", color: "#123456", online: true },
+            { clientId: "former-member", displayName: "Former Member", color: "#654321", online: false },
+          ],
+        },
+      },
+    ]);
+
+    render(<Room roomId="trip-1" />);
+
+    const onlineMembers = screen.getByRole("list", { name: "Online room members" });
+    expect(within(onlineMembers).getByText("Owner")).toBeInTheDocument();
+    expect(within(onlineMembers).queryByText("Former Member")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Room members (2)" }));
+    const membersDialog = screen.getByRole("dialog", { name: "Room members" });
+    expect(within(membersDialog).getByText("Former Member")).toBeInTheDocument();
+    expect(within(membersDialog).getByText("Offline")).toBeInTheDocument();
+
+    fireEvent.click(within(membersDialog).getByRole("button", { name: "Remove Former Member" }));
+    expect(within(membersDialog).getByText(/will clear their item claims/)).toBeInTheDocument();
+    fireEvent.click(within(membersDialog).getByRole("button", { name: "Confirm removal" }));
+    expect(mocks.send).toHaveBeenCalledWith({
+      type: "remove_member",
+      roomId: "trip-1",
+      memberId: "former-member",
+    });
   });
 
   it("does not send an item when its name is blank", () => {
