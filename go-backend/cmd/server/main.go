@@ -36,6 +36,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	authHandler := auth.NewHandler(store)
+	authHandler.SetRoomDeleteHandler(hub.DeleteRoom)
 	mux.Handle("/api/auth/", authHandler)
 	mux.Handle("/ws/", ws.ServeWS(hub, authHandler))
 

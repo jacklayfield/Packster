@@ -1,5 +1,6 @@
 import "./globals.css";
 import { ReactNode } from "react";
+import { PreferencesProvider } from "@/lib/preferences";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -10,7 +11,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="apple-touch-icon" href="/backpack.png" />
         <meta name="theme-color" content="#22aeff" />
       </head>
-      <body>{children}</body>
+      <body>
+        <PreferencesProvider>{children}</PreferencesProvider>
+      </body>
     </html>
   );
 }

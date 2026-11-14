@@ -192,6 +192,10 @@ export default function Home({ onJoin }: HomeProps) {
         >
           {account ? "My account" : "Sign in with Google"}
         </a>
+        <nav aria-label="Packster links" className="mb-5 flex gap-4 text-sm font-semibold text-white">
+          <a href="/preferences" className="underline-offset-4 hover:underline">Preferences</a>
+          {account && <a href="/rooms" className="underline-offset-4 hover:underline">My rooms</a>}
+        </nav>
         {!account && <p className="text-xs text-white/90">Join and browse rooms for free. Sign in with Google to create or change a room.</p>}
       </div>
 

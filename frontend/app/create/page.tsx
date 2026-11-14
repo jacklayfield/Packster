@@ -8,7 +8,9 @@ function CreateRoomForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { account, isLoading } = useAccount();
-    const tripName = searchParams.get("room") || searchParams.get("tripName") || "My Trip";
+    const [tripName, setTripName] = useState(
+        () => searchParams.get("room") || searchParams.get("tripName") || "My Trip"
+    );
 
     const [budget, setBudget] = useState("");
     const [description, setDescription] = useState("");
@@ -25,6 +27,11 @@ function CreateRoomForm() {
         event.preventDefault();
         if (!account) {
             setError("Sign in with Google before creating a room.");
+            return;
+        }
+
+        if (!tripName.trim()) {
+            setError("Please enter a name for this trip.");
             return;
         }
 
@@ -45,7 +52,7 @@ function CreateRoomForm() {
             window.sessionStorage.setItem(
                 `packster-create:${roomId}`,
                 JSON.stringify({
-                    roomName: tripName,
+                    roomName: tripName.trim(),
                     budget: budget.trim(),
                     description: description.trim(),
                     date,
@@ -81,6 +88,18 @@ function CreateRoomForm() {
                 </p>
 
                 <form className="mt-8 flex flex-col gap-4" onSubmit={handleSubmit}>
+                    <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                        Trip name
+                        <input
+                            type="text"
+                            value={tripName}
+                            onChange={(event) => setTripName(event.target.value)}
+                            placeholder="Enter trip name"
+                            required
+                            className="rounded-2xl border border-slate-200 px-4 py-3 text-base shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                        />
+                    </label>
+
                     <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
                         Budget
                         <input

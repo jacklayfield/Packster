@@ -75,6 +75,14 @@ export default function AccountPage() {
             <h1 className="mt-2 text-2xl font-bold text-slate-800">You&apos;re signed in</h1>
             <p className="mt-4 text-slate-700">{account.displayName}</p>
             <p className="text-sm text-slate-500">{account.email}</p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <Link href="/preferences" className="rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                Preferences
+              </Link>
+              <Link href="/rooms" className="rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                My rooms
+              </Link>
+            </div>
             <button
               type="button"
               onClick={handleLogout}

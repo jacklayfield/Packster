@@ -27,6 +27,17 @@ type memberRemovalRequest struct {
 	requester *Client
 }
 
+type roomDeletionRequest struct {
+	roomID  string
+	ownerID string
+	result  chan roomDeletionResult
+}
+
+type roomDeletionResult struct {
+	deleted bool
+	err     error
+}
+
 type Hub struct {
 	rooms map[string]*Room
 	store *db.Store
@@ -35,6 +46,7 @@ type Hub struct {
 	unregister   chan *Client
 	broadcast    chan Envelope
 	removeMember chan memberRemovalRequest
+	deleteRoom   chan roomDeletionRequest
 }
 
 func NewHub(store *db.Store) *Hub {
@@ -45,6 +57,26 @@ func NewHub(store *db.Store) *Hub {
 		unregister:   make(chan *Client),
 		broadcast:    make(chan Envelope),
 		removeMember: make(chan memberRemovalRequest),
+		deleteRoom:   make(chan roomDeletionRequest),
+	}
+}
+
+func (h *Hub) DeleteRoom(ctx context.Context, roomID, ownerID string) (bool, error) {
+	request := roomDeletionRequest{
+		roomID:  roomID,
+		ownerID: ownerID,
+		result:  make(chan roomDeletionResult, 1),
+	}
+	select {
+	case h.deleteRoom <- request:
+	case <-ctx.Done():
+		return false, ctx.Err()
+	}
+	select {
+	case result := <-request.result:
+		return result.deleted, result.err
+	case <-ctx.Done():
+		return false, ctx.Err()
 	}
 }
 
@@ -484,6 +516,28 @@ func (h *Hub) Run() {
 
 		case request := <-h.removeMember:
 			h.removeRoomMember(request)
+
+		case request := <-h.deleteRoom:
+			deleted, err := h.store.DeleteOwnedRoom(context.Background(), request.roomID, request.ownerID)
+			if err == nil && deleted {
+				if room, exists := h.rooms[request.roomID]; exists {
+					message, _ := json.Marshal(Envelope{
+						Type:    "error",
+						Room:    request.roomID,
+						Payload: "This room has been deleted.",
+					})
+					for client := range room.clients {
+						select {
+						case client.send <- message:
+						default:
+						}
+						close(client.send)
+						delete(room.clients, client)
+					}
+					delete(h.rooms, request.roomID)
+				}
+			}
+			request.result <- roomDeletionResult{deleted: deleted, err: err}
 		}
 	}
 }

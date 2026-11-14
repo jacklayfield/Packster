@@ -38,11 +38,21 @@ type accountStore interface {
 	DeleteSession(context.Context, []byte) error
 }
 
+type roomStore interface {
+	ListOwnedRooms(context.Context, string) ([]db.OwnedRoom, error)
+	DeleteOwnedRoom(context.Context, string, string) (bool, error)
+}
+
 type Handler struct {
 	store              accountStore
+	deleteRoom         func(context.Context, string, string) (bool, error)
 	httpClient         *http.Client
 	googleTokenURL     string
 	googleTokenInfoURL string
+}
+
+func (h *Handler) SetRoomDeleteHandler(handler func(context.Context, string, string) (bool, error)) {
+	h.deleteRoom = handler
 }
 
 func NewHandler(store accountStore) *Handler {
@@ -96,9 +106,77 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.logout(w, r)
+	case "rooms":
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		h.listRooms(w, r)
 	default:
+		if strings.HasPrefix(path, "rooms/") {
+			if r.Method != http.MethodDelete {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			h.deleteOwnedRoom(w, r, strings.TrimPrefix(path, "rooms/"))
+			return
+		}
 		http.NotFound(w, r)
 	}
+}
+
+func (h *Handler) listRooms(w http.ResponseWriter, r *http.Request) {
+	user, ok, serverError := h.sessionUser(w, r)
+	if !ok {
+		if !serverError {
+			writeError(w, http.StatusUnauthorized, "Not signed in.")
+		}
+		return
+	}
+	store, ok := h.store.(roomStore)
+	if !ok {
+		writeError(w, http.StatusInternalServerError, "Unable to load your rooms.")
+		return
+	}
+	rooms, err := store.ListOwnedRooms(r.Context(), user.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Unable to load your rooms.")
+		return
+	}
+	writeJSON(w, http.StatusOK, rooms)
+}
+
+func (h *Handler) deleteOwnedRoom(w http.ResponseWriter, r *http.Request, roomID string) {
+	if roomID == "" || strings.Contains(roomID, "/") {
+		writeError(w, http.StatusBadRequest, "A room ID is required.")
+		return
+	}
+	user, ok, serverError := h.sessionUser(w, r)
+	if !ok {
+		if !serverError {
+			writeError(w, http.StatusUnauthorized, "Not signed in.")
+		}
+		return
+	}
+	deleter := h.deleteRoom
+	if deleter == nil {
+		store, ok := h.store.(roomStore)
+		if !ok {
+			writeError(w, http.StatusInternalServerError, "Unable to delete the room.")
+			return
+		}
+		deleter = store.DeleteOwnedRoom
+	}
+	deleted, err := deleter(r.Context(), roomID, user.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Unable to delete the room.")
+		return
+	}
+	if !deleted {
+		writeError(w, http.StatusNotFound, "Room not found.")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
@@ -428,7 +506,7 @@ func (h *Handler) setCORS(w http.ResponseWriter, r *http.Request) bool {
 	if origin != "" {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.Header().Add("Vary", "Origin")
 	}

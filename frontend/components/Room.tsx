@@ -373,18 +373,24 @@ export default function Room({ roomId }: Props) {
                 <button
                   type="button"
                   role="menuitem"
-                  disabled
-                  className="flex w-full cursor-not-allowed items-center justify-between px-4 py-2 text-sm text-slate-400"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    router.push("/preferences");
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                 >
-                  Preferences <span className="text-xs">Coming soon</span>
+                  Preferences
                 </button>
                 <button
                   type="button"
                   role="menuitem"
-                  disabled
-                  className="flex w-full cursor-not-allowed items-center justify-between px-4 py-2 text-sm text-slate-400"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    router.push("/rooms");
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                 >
-                  My rooms <span className="text-xs">Coming soon</span>
+                  My rooms
                 </button>
                 <button
                   type="button"

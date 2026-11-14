@@ -30,6 +30,14 @@ type AuthUser struct {
 	Email       string
 }
 
+type OwnedRoom struct {
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Date        string    `json:"date"`
+	CreatedAt   time.Time `json:"createdAt"`
+}
+
 func (s *Store) GetOrCreateGoogleAccount(ctx context.Context, userID, identityID, subject, email, displayName string) (AuthUser, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -145,6 +153,43 @@ WHERE session.token_hash = $1 AND session.expires_at > NOW()
 func (s *Store) DeleteSession(ctx context.Context, tokenHash []byte) error {
 	_, err := s.pool.Exec(ctx, `DELETE FROM user_sessions WHERE token_hash = $1`, tokenHash)
 	return err
+}
+
+func (s *Store) ListOwnedRooms(ctx context.Context, ownerID string) ([]OwnedRoom, error) {
+	rows, err := s.pool.Query(ctx, `
+SELECT id, name, description, date, created_at
+FROM rooms
+WHERE owner_id = $1
+ORDER BY created_at DESC, id ASC
+`, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rooms []OwnedRoom
+	for rows.Next() {
+		var room OwnedRoom
+		if err := rows.Scan(&room.ID, &room.Name, &room.Description, &room.Date, &room.CreatedAt); err != nil {
+			return nil, err
+		}
+		rooms = append(rooms, room)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if rooms == nil {
+		rooms = []OwnedRoom{}
+	}
+	return rooms, nil
+}
+
+func (s *Store) DeleteOwnedRoom(ctx context.Context, roomID, ownerID string) (bool, error) {
+	result, err := s.pool.Exec(ctx, `DELETE FROM rooms WHERE id = $1 AND owner_id = $2`, roomID, ownerID)
+	if err != nil {
+		return false, err
+	}
+	return result.RowsAffected() > 0, nil
 }
 
 func (s *Store) UpsertRoom(ctx context.Context, id, name, budget, description, date, ownerID string) error {

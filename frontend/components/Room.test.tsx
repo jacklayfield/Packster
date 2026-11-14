@@ -109,7 +109,7 @@ describe("Room", () => {
     expect(screen.queryByPlaceholderText("Item name")).not.toBeInTheDocument();
   });
 
-  it("shows the signed-in account menu with future options", () => {
+  it("shows the signed-in account menu and opens preferences and rooms", () => {
     mocks.account = {
       id: "account-1",
       displayName: "Account Name",
@@ -120,8 +120,13 @@ describe("Room", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open account menu" }));
 
     expect(screen.getByRole("menu", { name: "Account options" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: /Preferences/ })).toBeDisabled();
-    expect(screen.getByRole("menuitem", { name: /My rooms/ })).toBeDisabled();
+    expect(screen.getByRole("menuitem", { name: "Preferences" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Preferences" }));
+    expect(mocks.routerPush).toHaveBeenCalledWith("/preferences");
+    fireEvent.click(screen.getByRole("button", { name: "Open account menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "My rooms" }));
+    expect(mocks.routerPush).toHaveBeenCalledWith("/rooms");
+    fireEvent.click(screen.getByRole("button", { name: "Open account menu" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Account settings" }));
     expect(mocks.routerPush).toHaveBeenCalledWith("/account");
   });

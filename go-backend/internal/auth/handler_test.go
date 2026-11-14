@@ -17,14 +17,17 @@ import (
 )
 
 type memoryStore struct {
-	google   map[string]db.AuthUser
-	sessions map[string]db.AuthUser
+	google     map[string]db.AuthUser
+	sessions   map[string]db.AuthUser
+	rooms      []db.OwnedRoom
+	roomOwners map[string]string
 }
 
 func newMemoryStore() *memoryStore {
 	return &memoryStore{
-		google:   make(map[string]db.AuthUser),
-		sessions: make(map[string]db.AuthUser),
+		google:     make(map[string]db.AuthUser),
+		sessions:   make(map[string]db.AuthUser),
+		roomOwners: make(map[string]string),
 	}
 }
 
@@ -58,6 +61,79 @@ func (s *memoryStore) GetSession(_ context.Context, hash []byte) (db.AuthUser, e
 func (s *memoryStore) DeleteSession(_ context.Context, hash []byte) error {
 	delete(s.sessions, string(hash))
 	return nil
+}
+
+func (s *memoryStore) ListOwnedRooms(_ context.Context, ownerID string) ([]db.OwnedRoom, error) {
+	var rooms []db.OwnedRoom
+	for _, room := range s.rooms {
+		if s.roomOwners[room.ID] == ownerID {
+			rooms = append(rooms, room)
+		}
+	}
+	return rooms, nil
+}
+
+func (s *memoryStore) DeleteOwnedRoom(_ context.Context, roomID, ownerID string) (bool, error) {
+	if s.roomOwners[roomID] != ownerID {
+		return false, nil
+	}
+	delete(s.roomOwners, roomID)
+	return true, nil
+}
+
+func TestOwnedRoomsRequireSessionAndDeleteOnlyOwnedRoom(t *testing.T) {
+	store := newMemoryStore()
+	store.rooms = []db.OwnedRoom{
+		{ID: "mine", Name: "My room"},
+		{ID: "theirs", Name: "Their room"},
+	}
+	store.roomOwners["mine"] = "account-1"
+	store.roomOwners["theirs"] = "account-2"
+	store.sessions[string(tokenHash("session-token"))] = db.AuthUser{ID: "account-1"}
+	handler := NewHandler(store)
+	t.Setenv("FRONTEND_ORIGIN", "http://localhost:3000")
+
+	unauthenticated := httptest.NewRecorder()
+	handler.ServeHTTP(unauthenticated, httptest.NewRequest(http.MethodGet, "/api/auth/rooms", nil))
+	if unauthenticated.Code != http.StatusUnauthorized {
+		t.Fatalf("expected unauthenticated room request to be rejected, got %d", unauthenticated.Code)
+	}
+
+	listRequest := httptest.NewRequest(http.MethodGet, "/api/auth/rooms", nil)
+	listRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
+	listResponse := httptest.NewRecorder()
+	handler.ServeHTTP(listResponse, listRequest)
+	var rooms []db.OwnedRoom
+	if err := json.Unmarshal(listResponse.Body.Bytes(), &rooms); err != nil {
+		t.Fatalf("decode owned rooms: %v", err)
+	}
+	if listResponse.Code != http.StatusOK || len(rooms) != 1 || rooms[0].ID != "mine" {
+		t.Fatalf("expected only the signed-in user's room, got status %d and rooms %+v", listResponse.Code, rooms)
+	}
+
+	deleteRequest := httptest.NewRequest(http.MethodDelete, "/api/auth/rooms/theirs", nil)
+	deleteRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
+	deleteResponse := httptest.NewRecorder()
+	handler.ServeHTTP(deleteResponse, deleteRequest)
+	if deleteResponse.Code != http.StatusNotFound {
+		t.Fatalf("expected deleting another user's room to fail, got %d", deleteResponse.Code)
+	}
+
+	deleteOwnedRequest := httptest.NewRequest(http.MethodDelete, "/api/auth/rooms/mine", nil)
+	deleteOwnedRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "session-token"})
+	deleteOwnedResponse := httptest.NewRecorder()
+	handler.ServeHTTP(deleteOwnedResponse, deleteOwnedRequest)
+	if deleteOwnedResponse.Code != http.StatusNoContent || store.roomOwners["mine"] != "" {
+		t.Fatalf("expected owned room to be deleted, got status %d", deleteOwnedResponse.Code)
+	}
+	preflight := httptest.NewRequest(http.MethodOptions, "/api/auth/rooms/mine", nil)
+	preflight.Header.Set("Origin", "http://localhost:3000")
+	preflightResponse := httptest.NewRecorder()
+	handler.ServeHTTP(preflightResponse, preflight)
+	if preflightResponse.Code != http.StatusNoContent || !strings.Contains(preflightResponse.Header().Get("Access-Control-Allow-Methods"), "DELETE") {
+		t.Fatalf("expected room deletion CORS preflight to allow DELETE, got status %d and methods %q",
+			preflightResponse.Code, preflightResponse.Header().Get("Access-Control-Allow-Methods"))
+	}
 }
 
 func TestGoogleSignInStartsWithCSRFState(t *testing.T) {
